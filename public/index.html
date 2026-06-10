@@ -3,946 +3,1217 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>AUDC VoIP — Multi-Channel Telephony Console</title>
+<title>AUDC VoIP Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
 :root{
-  --bg:#07111f;--bg2:#0c1a2e;--bg3:#101f35;--bg4:#142540;
-  --border:#1a3050;--border2:#2a5080;
-  --green:#00e87a;--green2:#006633;--green3:#002211;
-  --amber:#ffaa00;--amber2:#664400;--amber3:#2a1a00;
-  --red:#ff3344;--red2:#661122;--red3:#220008;
-  --blue:#2299ff;--blue2:#003388;--blue3:#001122;
-  --cyan:#00ccff;--cyan2:#003344;
-  --text:#b8d4f0;--textdim:#3a5570;--textmed:#6a90b0;
+  --bg:       #080b12;
+  --surface1: #0e1117;
+  --surface2: #141820;
+  --surface3: #1c2230;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.12);
+  --glass:    rgba(255,255,255,.04);
+
+  --blue:   #3b82f6;
+  --blue-g: #1d4ed8;
+  --green:  #10b981;
+  --amber:  #f59e0b;
+  --red:    #ef4444;
+  --violet: #8b5cf6;
+
+  --text:    #e2e8f0;
+  --text2:   #94a3b8;
+  --text3:   #475569;
+
+  --r: 10px;
+  --shadow: 0 4px 24px rgba(0,0,0,.5);
 }
-body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;overflow-x:hidden;}
 
-/* ── SCROLLBAR ─────────────────────────────── */
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--bg)}
-::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
 
-/* ── SCREEN ROUTER ─────────────────────────── */
-.screen{display:none}
-.screen.active{display:flex;flex-direction:column;min-height:100vh}
+/* ── Scrollbar ─────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px}
 
-/* ══════════════════════════════════════════════
-   LOGIN SCREEN
-══════════════════════════════════════════════ */
-#loginScreen{align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,#0a2040 0%,var(--bg) 70%)}
-.login-card{background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:36px 32px;width:380px;max-width:95vw}
-.brand{text-align:center;margin-bottom:28px}
-.brand-logo{font-size:11px;color:var(--textdim);letter-spacing:4px;margin-bottom:6px}
-.brand-name{font-size:28px;color:var(--amber);letter-spacing:6px;font-weight:bold}
-.brand-sub{font-size:10px;color:var(--textdim);letter-spacing:3px;margin-top:4px}
-.field{margin-bottom:16px}
-.field label{display:block;font-size:10px;color:var(--textdim);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
-.field input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;font-family:inherit;font-size:14px;outline:none;border-radius:4px;transition:border-color .2s}
-.field input:focus{border-color:var(--blue)}
-.connect-btn{width:100%;margin-top:8px;padding:13px;background:var(--blue3);border:1px solid var(--blue2);color:var(--blue);font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;border-radius:4px;transition:all .15s;text-transform:uppercase}
-.connect-btn:hover{background:var(--blue2);border-color:var(--blue)}
-.connect-btn:disabled{opacity:.5;cursor:not-allowed}
-.login-err{color:var(--red);font-size:11px;text-align:center;margin-top:10px;min-height:16px}
+/* ══════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════ */
+#loginScreen{
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(59,130,246,.08) 0%,transparent 70%);
+}
+#loginScreen.hidden{display:none}
 
-/* ══════════════════════════════════════════════
-   MAIN CONSOLE
-══════════════════════════════════════════════ */
-#mainScreen{flex-direction:column}
+.login-wrap{
+  width:400px;max-width:94vw;
+  background:var(--surface1);
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:40px 36px;
+  box-shadow:var(--shadow),0 0 60px rgba(59,130,246,.06);
+}
+.brand{text-align:center;margin-bottom:32px}
+.brand-top{
+  display:inline-flex;align-items:center;gap:10px;
+  background:rgba(59,130,246,.1);
+  border:1px solid rgba(59,130,246,.2);
+  border-radius:100px;
+  padding:6px 16px;
+  font-size:11px;font-weight:500;letter-spacing:2px;
+  color:var(--blue);margin-bottom:16px;text-transform:uppercase;
+}
+.brand-name{font-size:32px;font-weight:700;letter-spacing:-1px;color:var(--text)}
+.brand-name span{color:var(--blue)}
+.brand-sub{font-size:12px;color:var(--text3);letter-spacing:.5px;margin-top:6px}
 
-/* ── HEADER ────────────────────────────────── */
-.hdr{background:var(--bg2);border-bottom:2px solid var(--border2);padding:10px 18px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.hdr-left{display:flex;flex-direction:column}
-.hdr-title{font-size:17px;font-weight:bold;color:var(--amber);letter-spacing:4px}
-.hdr-sub{font-size:9px;color:var(--textdim);letter-spacing:2px;margin-top:1px}
-.hdr-right{display:flex;align-items:center;gap:18px}
-.clock{font-size:22px;color:var(--green);font-weight:bold;letter-spacing:3px;font-variant-numeric:tabular-nums}
-.user-badge{text-align:left}
-.user-name{font-size:12px;color:var(--green);display:flex;align-items:center;gap:6px}
-.user-status{font-size:9px;color:var(--textdim);letter-spacing:1px}
+.field{margin-bottom:18px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:7px;letter-spacing:.3px}
+.field input{
+  width:100%;background:var(--surface2);
+  border:1px solid var(--border2);
+  color:var(--text);padding:11px 14px;
+  font-family:'Inter',sans-serif;font-size:14px;
+  outline:none;border-radius:8px;transition:border-color .2s;
+}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.field input::placeholder{color:var(--text3)}
 
-/* ── LED ───────────────────────────────────── */
-.led{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.led-g{background:var(--green);box-shadow:0 0 6px var(--green)}
-.led-a{background:var(--amber);box-shadow:0 0 6px var(--amber)}
-.led-r{background:var(--red);box-shadow:0 0 6px var(--red)}
-.led-off{background:#1a2a3a;box-shadow:none}
+.connect-btn{
+  width:100%;margin-top:4px;padding:13px;
+  background:var(--blue);border:none;
+  color:#fff;font-family:'Inter',sans-serif;
+  font-size:14px;font-weight:600;
+  cursor:pointer;border-radius:8px;
+  transition:all .2s;letter-spacing:.3px;
+}
+.connect-btn:hover{background:#2563eb;transform:translateY(-1px);box-shadow:0 8px 24px rgba(59,130,246,.35)}
+.connect-btn:active{transform:translateY(0)}
+.connect-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.login-err{color:var(--red);font-size:12px;text-align:center;margin-top:12px;min-height:18px}
 
-/* ── MASTER PANEL ──────────────────────────── */
-.master{background:var(--bg3);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex-shrink:0}
-.m-group{display:flex;align-items:center;gap:8px}
-.m-label{font-size:9px;color:var(--textdim);letter-spacing:2px;white-space:nowrap;text-transform:uppercase}
-.m-val{font-size:10px;color:var(--blue);min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
-.sep{width:1px;height:32px;background:var(--border);flex-shrink:0}
-.spacer{flex:1}
+/* ══════════════════════════════════════════════════
+   MAIN
+══════════════════════════════════════════════════ */
+#mainScreen{display:none;flex-direction:column;min-height:100vh}
+#mainScreen.active{display:flex}
 
-/* Sliders */
-input[type=range]{-webkit-appearance:none;height:4px;background:var(--border);border-radius:2px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--blue);cursor:pointer}
-input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--blue);cursor:pointer;border:none}
+/* ── Header ────────────────────────────────────── */
+.hdr{
+  background:var(--surface1);
+  border-bottom:1px solid var(--border);
+  padding:0 20px;
+  height:56px;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(20px);
+}
+.hdr-brand{display:flex;align-items:center;gap:10px}
+.hdr-logo{
+  width:32px;height:32px;border-radius:8px;
+  background:linear-gradient(135deg,var(--blue),var(--violet));
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;
+  box-shadow:0 2px 12px rgba(59,130,246,.4);
+  font-family:'JetBrains Mono',monospace;
+}
+.hdr-title{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.hdr-sub{font-size:10px;color:var(--text3);letter-spacing:.3px;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:12px}
+
+.clock{
+  font-family:'JetBrains Mono',monospace;
+  font-size:16px;font-weight:500;color:var(--green);
+  background:rgba(16,185,129,.08);
+  border:1px solid rgba(16,185,129,.15);
+  padding:5px 12px;border-radius:6px;
+  letter-spacing:2px;font-variant-numeric:tabular-nums;
+}
+.user-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface2);border:1px solid var(--border2);
+  padding:6px 12px;border-radius:100px;
+  font-size:13px;font-weight:500;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--text3);box-shadow:none}
+
+/* Demo badge */
+.demo-badge{
+  display:none;align-items:center;gap:6px;
+  background:rgba(245,158,11,.1);
+  border:1px solid rgba(245,158,11,.25);
+  color:var(--amber);
+  padding:4px 12px;border-radius:100px;
+  font-size:11px;font-weight:600;letter-spacing:.5px;
+  text-transform:uppercase;
+}
+.demo-badge.visible{display:flex}
+.demo-dot{width:6px;height:6px;border-radius:50%;background:var(--amber);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Master Bar ─────────────────────────────────── */
+.master{
+  background:var(--surface1);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.m-block{display:flex;align-items:center;gap:8px}
+.m-label{font-size:11px;font-weight:500;color:var(--text3);white-space:nowrap;letter-spacing:.3px;text-transform:uppercase}
+.m-val{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--blue);min-width:32px;text-align:right}
+.vdiv{width:1px;height:24px;background:var(--border);flex-shrink:0}
+
+/* Master volume */
+input[type=range]{
+  -webkit-appearance:none;height:3px;
+  background:var(--surface3);border-radius:2px;outline:none;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;
+  border-radius:50%;background:var(--blue);cursor:pointer;
+  box-shadow:0 0 8px rgba(59,130,246,.5);transition:transform .1s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
+input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;background:var(--blue);
+  cursor:pointer;border:none;box-shadow:0 0 8px rgba(59,130,246,.5);
+}
+
+/* Mic level bar */
+.mic-bar{
+  width:80px;height:4px;background:var(--surface3);
+  border-radius:2px;overflow:hidden;position:relative;
+}
+.mic-bar-fill{
+  height:100%;width:0%;
+  background:linear-gradient(to right,var(--green),var(--amber),var(--red));
+  background-size:300% 100%;transition:width .04s ease-out;
+}
 
 /* Buttons */
-.btn{padding:5px 12px;border:1px solid var(--border);background:var(--bg);color:var(--textmed);font-family:inherit;font-size:11px;cursor:pointer;border-radius:3px;transition:all .1s;white-space:nowrap;user-select:none;letter-spacing:1px;text-transform:uppercase}
-.btn:hover{border-color:var(--textmed);color:var(--text)}
-.btn.on-g{border-color:var(--green2);color:var(--green);background:var(--green3)}
-.btn.on-r{border-color:var(--red2);color:var(--red);background:var(--red3)}
-.btn.on-a{border-color:var(--amber2);color:var(--amber);background:var(--amber3)}
+.btn{
+  padding:6px 14px;background:var(--surface2);
+  border:1px solid var(--border2);color:var(--text2);
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  cursor:pointer;border-radius:7px;transition:all .15s;
+  white-space:nowrap;letter-spacing:.2px;
+}
+.btn:hover{background:var(--surface3);border-color:var(--border2);color:var(--text)}
+.btn.active-red{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:var(--red)}
 
 /* PTT ALL */
-.ptt-all{padding:9px 22px;background:var(--red3);border:2px solid var(--red2);color:var(--red);font-family:inherit;font-size:12px;font-weight:bold;letter-spacing:2px;cursor:pointer;border-radius:4px;user-select:none;transition:all .1s;touch-action:none}
-.ptt-all:active,.ptt-all.active{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 0 20px rgba(255,51,68,.5)}
-.hotkey{display:inline-block;font-size:9px;padding:1px 4px;border:1px solid var(--textdim);border-radius:2px;color:var(--textdim);margin-left:4px}
+.ptt-all{
+  padding:8px 20px;
+  background:rgba(239,68,68,.08);
+  border:1.5px solid rgba(239,68,68,.25);
+  color:var(--red);
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;border-radius:8px;
+  user-select:none;touch-action:none;
+  transition:all .12s;letter-spacing:.3px;
+  position:relative;overflow:hidden;
+}
+.ptt-all::before{
+  content:'';position:absolute;inset:0;
+  background:var(--red);opacity:0;transition:opacity .12s;
+}
+.ptt-all:active,.ptt-all.active{
+  color:#fff;border-color:var(--red);
+  box-shadow:0 0 24px rgba(239,68,68,.4),0 0 48px rgba(239,68,68,.15);
+}
+.ptt-all:active::before,.ptt-all.active::before{opacity:1}
+.ptt-all span{position:relative;z-index:1}
+.ptt-all .hk{
+  display:inline-block;font-size:9px;padding:1px 5px;
+  border:1px solid currentColor;border-radius:3px;
+  opacity:.7;margin-right:4px;
+}
+.spacer{flex:1}
 
-/* ── ADD CHANNEL BAR ───────────────────────── */
-.add-bar{background:var(--bg3);border-bottom:1px solid var(--border);padding:8px 18px;display:none;align-items:center;gap:10px;flex-wrap:wrap}
+/* Demo btn */
+.demo-btn{
+  padding:7px 16px;
+  background:rgba(245,158,11,.06);
+  border:1.5px solid rgba(245,158,11,.2);
+  color:var(--amber);
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:600;
+  cursor:pointer;border-radius:7px;transition:all .15s;
+  letter-spacing:.3px;
+}
+.demo-btn:hover{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4)}
+.demo-btn.running{background:rgba(245,158,11,.15);border-color:var(--amber)}
+
+/* Add bar */
+.add-bar{
+  background:var(--surface1);border-bottom:1px solid var(--border);
+  padding:10px 20px;display:none;align-items:center;gap:10px;flex-wrap:wrap;
+}
 .add-bar.open{display:flex}
-.add-bar input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;font-family:inherit;font-size:12px;outline:none;border-radius:3px;width:120px}
+.add-bar input{
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text);padding:8px 12px;font-family:'Inter',sans-serif;
+  font-size:13px;outline:none;border-radius:7px;width:130px;
+}
 .add-bar input:focus{border-color:var(--blue)}
+.add-bar input::placeholder{color:var(--text3)}
 
-/* ── CHANNELS GRID ─────────────────────────── */
-.grid-wrap{flex:1;overflow-y:auto;padding:14px}
-.channels-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+/* ── Grid ───────────────────────────────────────── */
+.grid-wrap{flex:1;overflow-y:auto;padding:16px 20px 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
 
-/* ── CHANNEL CARD ──────────────────────────── */
-.ch-card{background:var(--bg3);border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .2s,box-shadow .2s}
-.ch-card.joined{border-color:var(--border2)}
-.ch-card.rx{border-color:var(--green);box-shadow:0 0 12px rgba(0,232,122,.15)}
-.ch-card.tx{border-color:var(--amber);box-shadow:0 0 14px rgba(255,170,0,.2)}
-
-.ch-head{background:var(--bg2);padding:9px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.ch-id{font-size:15px;font-weight:bold;color:var(--amber);letter-spacing:2px}
-.ch-name{font-size:10px;color:var(--textdim);margin-top:1px}
-.ch-indics{display:flex;gap:5px;align-items:center}
-.indic{font-size:9px;font-weight:bold;padding:2px 5px;border-radius:2px;letter-spacing:1px;transition:all .15s}
-.indic-rx{background:var(--green3);color:var(--green);border:1px solid var(--green2)}
-.indic-rx.on{background:var(--green);color:#000;border-color:var(--green)}
-.indic-tx{background:var(--amber3);color:var(--amber);border:1px solid var(--amber2)}
-.indic-tx.on{background:var(--amber);color:#000;border-color:var(--amber)}
-
-.ch-body{padding:11px 13px}
-
-/* VU Meter */
-.vu{height:5px;background:var(--bg);border:1px solid var(--border);border-radius:3px;overflow:hidden;margin:6px 0}
-.vu-fill{height:100%;width:0%;background:linear-gradient(to right,var(--green) 0%,var(--amber) 70%,var(--red) 100%);background-size:300% 100%;transition:width .04s ease-out}
-
-/* Mic VU */
-.mic-vu{height:4px;background:var(--bg);border:1px solid var(--amber2);border-radius:3px;overflow:hidden;margin:4px 0 6px}
-.mic-vu-fill{height:100%;width:0%;background:var(--amber);transition:width .04s ease-out}
-
-/* Participants */
-.participants{display:flex;flex-wrap:wrap;gap:4px;min-height:22px;margin:4px 0}
-.ptag{font-size:10px;padding:2px 7px;background:var(--blue3);border:1px solid var(--blue2);border-radius:2px;color:var(--blue);transition:all .2s}
-.ptag.speaking{background:var(--green3);border-color:var(--green2);color:var(--green)}
-.ptag.speaking::before{content:"▶ "}
-.no-peers{font-size:10px;color:var(--textdim)}
-
-/* Volume row */
-.vol-row{display:flex;align-items:center;gap:8px;margin:5px 0}
-.vol-icon{font-size:12px;cursor:pointer;user-select:none}
-input[type=range].vol-slider{flex:1;width:100%}
-
-/* Controls row */
-.ctrl-row{display:flex;gap:6px;align-items:center;margin:6px 0}
-.ctrl-btn{padding:4px 9px;border:1px solid var(--border);background:var(--bg);color:var(--textdim);font-family:inherit;font-size:10px;cursor:pointer;border-radius:3px;transition:all .1s;user-select:none;letter-spacing:.5px}
-.ctrl-btn:hover{color:var(--text);border-color:var(--textmed)}
-.ctrl-btn.muted{background:var(--red3);border-color:var(--red2);color:var(--red)}
-.ctrl-btn.joined{background:var(--red3);border-color:var(--red2);color:var(--red)}
-.ctrl-btn.notjoined{background:var(--green3);border-color:var(--green2);color:var(--green)}
-.peer-count{font-size:10px;color:var(--textdim);margin-left:auto}
-
-/* PTT Button */
-.ptt-btn{width:100%;padding:13px;margin-top:8px;background:var(--bg);border:2px solid var(--amber2);color:var(--amber);font-family:inherit;font-size:13px;font-weight:bold;letter-spacing:3px;cursor:pointer;border-radius:4px;user-select:none;touch-action:none;transition:all .1s;text-transform:uppercase}
-.ptt-btn:disabled{opacity:.3;cursor:not-allowed}
-.ptt-btn.active{background:var(--amber);color:#000;border-color:var(--amber);box-shadow:0 0 20px rgba(255,170,0,.4);transform:scale(.99)}
-
-/* Chat */
-.ch-chat{border-top:1px solid var(--border);padding:8px 13px}
-.chat-log{max-height:80px;overflow-y:auto;font-size:10px;color:var(--textmed);margin-bottom:6px;display:flex;flex-direction:column;gap:3px}
-.chat-msg{display:flex;gap:6px}
-.chat-who{color:var(--blue);flex-shrink:0}
-.chat-txt{color:var(--text)}
-.chat-input-row{display:flex;gap:6px}
-.chat-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:5px 8px;font-family:inherit;font-size:11px;outline:none;border-radius:3px}
-.chat-input:focus{border-color:var(--blue2)}
-.chat-send{padding:5px 10px;background:var(--blue3);border:1px solid var(--blue2);color:var(--blue);font-family:inherit;font-size:10px;cursor:pointer;border-radius:3px}
-
-/* ── STATUS BAR ────────────────────────────── */
-.statusbar{background:var(--bg2);border-top:1px solid var(--border);padding:5px 18px;display:flex;align-items:center;gap:18px;font-size:10px;color:var(--textdim);flex-shrink:0;flex-wrap:wrap}
-.s-item{display:flex;align-items:center;gap:5px}
-
-/* ── RESPONSIVE ────────────────────────────── */
-@media(max-width:600px){
-  .channels-grid{grid-template-columns:1fr}
-  .hdr-right{gap:10px}
-  .clock{font-size:16px}
-  .master{gap:8px}
-  .ptt-all{padding:8px 14px;font-size:11px}
+/* ── Channel Card ───────────────────────────────── */
+.card{
+  background:var(--surface1);
+  border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+  transition:border-color .25s,box-shadow .25s;
+  display:flex;flex-direction:column;
+}
+.card:hover{border-color:var(--border2)}
+.card.joined{border-color:rgba(59,130,246,.2)}
+.card.rx{
+  border-color:rgba(16,185,129,.4);
+  box-shadow:0 0 20px rgba(16,185,129,.08);
+}
+.card.tx{
+  border-color:rgba(245,158,11,.5);
+  box-shadow:0 0 20px rgba(245,158,11,.12);
 }
 
-/* Animations */
-@keyframes rxpulse{0%,100%{opacity:1}50%{opacity:.6}}
-.rx .indic-rx.on{animation:rxpulse .6s infinite}
+/* Card Header */
+.card-hdr{
+  padding:14px 16px 10px;
+  display:flex;align-items:flex-start;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.card-id{
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;font-weight:600;color:var(--text2);
+  letter-spacing:.5px;
+}
+.card-name{font-size:15px;font-weight:600;color:var(--text);margin-top:2px}
+.indics{display:flex;gap:6px;align-items:center;margin-top:2px}
+.indic{
+  font-size:9px;font-weight:600;padding:3px 7px;
+  border-radius:100px;letter-spacing:.5px;
+  transition:all .15s;text-transform:uppercase;
+}
+.i-rx{background:rgba(16,185,129,.08);color:rgba(16,185,129,.4);border:1px solid rgba(16,185,129,.12)}
+.i-rx.on{background:rgba(16,185,129,.15);color:var(--green);border-color:rgba(16,185,129,.4);box-shadow:0 0 8px rgba(16,185,129,.2)}
+.i-tx{background:rgba(245,158,11,.08);color:rgba(245,158,11,.4);border:1px solid rgba(245,158,11,.12)}
+.i-tx.on{background:rgba(245,158,11,.15);color:var(--amber);border-color:rgba(245,158,11,.4);box-shadow:0 0 8px rgba(245,158,11,.2)}
+
+/* Card Body */
+.card-body{padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:10px}
+
+/* Participants */
+.peers{display:flex;flex-wrap:wrap;gap:5px;min-height:24px}
+.peer-tag{
+  display:flex;align-items:center;gap:4px;
+  font-size:11px;font-weight:500;padding:3px 8px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:100px;color:var(--text2);transition:all .2s;
+}
+.peer-tag .pdot{width:5px;height:5px;border-radius:50%;background:var(--text3);transition:all .2s}
+.peer-tag.spk{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:var(--green)}
+.peer-tag.spk .pdot{background:var(--green);box-shadow:0 0 6px var(--green);animation:blink .5s infinite}
+.no-peer{font-size:11px;color:var(--text3);align-self:center}
+
+/* VU Meter */
+.vu-wrap{display:flex;align-items:center;gap:8px}
+.vu-label{font-size:9px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;flex-shrink:0}
+.vu{flex:1;height:4px;background:var(--surface3);border-radius:2px;overflow:hidden}
+.vu-fill{height:100%;width:0%;background:linear-gradient(to right,var(--green),var(--amber),var(--red));background-size:300%;transition:width .04s ease-out}
+
+/* Volume row */
+.vol-row{display:flex;align-items:center;gap:8px}
+.vol-icon{font-size:13px;cursor:pointer;flex-shrink:0;user-select:none;transition:opacity .15s}
+.vol-icon:hover{opacity:.7}
+input[type=range].vslider{flex:1;width:100%}
+.vol-pct{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--blue);min-width:32px;text-align:right}
+
+/* Control row */
+.ctrl-row{display:flex;gap:6px;align-items:center}
+.ctrl-btn{
+  padding:5px 11px;background:var(--surface2);
+  border:1px solid var(--border);color:var(--text3);
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:500;
+  cursor:pointer;border-radius:6px;transition:all .12s;
+  user-select:none;letter-spacing:.2px;
+}
+.ctrl-btn:hover{color:var(--text);border-color:var(--border2)}
+.ctrl-btn.join{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:var(--green)}
+.ctrl-btn.join:hover{background:rgba(16,185,129,.15)}
+.ctrl-btn.leave{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);color:var(--red)}
+.ctrl-btn.leave:hover{background:rgba(239,68,68,.1)}
+.ctrl-btn.muted{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:var(--red)}
+.pcount{font-size:11px;color:var(--text3);margin-left:auto}
+
+/* PTT Button */
+.ptt{
+  position:relative;overflow:hidden;
+  width:100%;padding:14px;
+  background:var(--surface2);
+  border:1.5px solid rgba(245,158,11,.2);
+  color:var(--amber);
+  font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;border-radius:8px;
+  user-select:none;touch-action:none;
+  transition:all .12s;letter-spacing:.3px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:auto;
+}
+.ptt::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,var(--amber),#f97316);
+  opacity:0;transition:opacity .12s;
+}
+.ptt:disabled{opacity:.3;cursor:not-allowed}
+.ptt:active:not(:disabled),.ptt.active{
+  color:#000;border-color:var(--amber);
+  box-shadow:0 0 24px rgba(245,158,11,.4),0 0 48px rgba(245,158,11,.1);
+}
+.ptt:active:not(:disabled)::before,.ptt.active::before{opacity:1}
+.ptt .ptt-txt{position:relative;z-index:1}
+.ptt .ptt-icon{position:relative;z-index:1;font-size:15px}
+
+/* PTT pulse ring */
+@keyframes ripple{0%{transform:scale(.8);opacity:1}100%{transform:scale(2.4);opacity:0}}
+.ptt.active .ptt-icon::after{
+  content:'';position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid var(--amber);animation:ripple 1s infinite;
+}
+
+/* Transmission log overlay */
+.tx-log{
+  background:rgba(8,11,18,.9);
+  border-top:1px solid var(--border);
+  padding:8px 14px;
+  max-height:72px;overflow-y:auto;
+  display:flex;flex-direction:column;gap:3px;
+}
+.tx-entry{
+  font-size:10px;display:flex;gap:6px;align-items:baseline;
+  animation:fadeIn .3s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.tx-who{font-weight:600;color:var(--blue);flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.tx-text{color:var(--text2)}
+.tx-empty{font-size:10px;color:var(--text3);font-style:italic}
+
+/* ── Status Bar ──────────────────────────────────── */
+.sbar{
+  background:var(--surface1);border-top:1px solid var(--border);
+  padding:6px 20px;display:flex;align-items:center;
+  gap:16px;font-size:11px;color:var(--text3);
+  flex-shrink:0;flex-wrap:wrap;
+}
+.si{display:flex;align-items:center;gap:5px}
+.si .dot-s{width:5px;height:5px;border-radius:50%;background:var(--green)}
+
+/* ── DEMO MODAL ──────────────────────────────────── */
+.demo-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;z-index:1000;
+}
+.demo-overlay.open{display:flex}
+.demo-modal{
+  background:var(--surface1);border:1px solid var(--border2);
+  border-radius:14px;padding:32px;width:460px;max-width:94vw;
+  box-shadow:var(--shadow);
+}
+.dm-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.dm-sub{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.6}
+.dm-scenario{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:14px;margin-bottom:20px;
+}
+.dm-s-title{font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.dm-step{
+  display:flex;gap:10px;align-items:flex-start;
+  font-size:12px;color:var(--text2);margin-bottom:8px;
+}
+.dm-step-ch{
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  color:var(--blue);background:rgba(59,130,246,.1);
+  border:1px solid rgba(59,130,246,.2);
+  padding:2px 7px;border-radius:4px;flex-shrink:0;margin-top:1px;
+}
+.dm-btns{display:flex;gap:10px;justify-content:flex-end}
+.dm-btn-cancel{
+  padding:10px 20px;background:var(--surface2);border:1px solid var(--border2);
+  color:var(--text2);font-family:'Inter',sans-serif;font-size:13px;
+  cursor:pointer;border-radius:8px;transition:all .15s;
+}
+.dm-btn-start{
+  padding:10px 24px;background:var(--amber);border:none;
+  color:#000;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;border-radius:8px;transition:all .15s;
+}
+.dm-btn-start:hover{background:#fbbf24;box-shadow:0 4px 16px rgba(245,158,11,.4)}
+
+/* Responsive */
+@media(max-width:640px){
+  .hdr{padding:0 14px}.master{padding:8px 14px}.grid-wrap{padding:12px 14px}
+  .clock{font-size:13px;padding:4px 9px}.dm-title{font-size:16px}
+}
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="loginScreen" class="screen active">
-  <div class="login-card">
+<!-- ══ LOGIN ══ -->
+<div id="loginScreen">
+  <div class="login-wrap">
     <div class="brand">
-      <div class="brand-logo">AUDC SYSTEMS</div>
-      <div class="brand-name">VoIP</div>
-      <div class="brand-sub">MULTI-CHANNEL TELEPHONY CONSOLE</div>
+      <div class="brand-top">⬡ AUDC Systems</div>
+      <div class="brand-name">VoIP <span>Console</span></div>
+      <div class="brand-sub">Multi-Channel Telephony System</div>
     </div>
     <div class="field">
-      <label>שם / CALL SIGN</label>
+      <label>שם תחנה / Call Sign</label>
       <input id="inName" type="text" placeholder="OPS-1" maxlength="20" autocomplete="off"/>
     </div>
     <div class="field">
-      <label>שרת / SERVER URL</label>
+      <label>כתובת שרת / Server URL</label>
       <input id="inServer" type="text" autocomplete="off"/>
     </div>
-    <button class="connect-btn" id="connectBtn" onclick="APP.connect()">התחבר &nbsp;/&nbsp; CONNECT</button>
+    <button class="connect-btn" id="connectBtn" onclick="APP.connect()">התחבר למערכת</button>
     <div class="login-err" id="loginErr"></div>
   </div>
 </div>
 
-<!-- MAIN CONSOLE -->
-<div id="mainScreen" class="screen">
+<!-- ══ MAIN ══ -->
+<div id="mainScreen">
+
   <!-- Header -->
   <div class="hdr">
-    <div class="hdr-left">
-      <div class="hdr-title">⬡ AUDC VoIP CONSOLE</div>
-      <div class="hdr-sub">MULTI-CHANNEL TELEPHONY SYSTEM</div>
+    <div class="hdr-brand">
+      <div class="hdr-logo">VC</div>
+      <div>
+        <div class="hdr-title">AUDC VoIP Console</div>
+        <div class="hdr-sub">Multi-Channel Telephony</div>
+      </div>
+    </div>
+    <div class="demo-badge" id="demoBadge">
+      <span class="demo-dot"></span> Demo Active
     </div>
     <div class="hdr-right">
       <div id="clock" class="clock">00:00:00</div>
-      <div class="user-badge">
-        <div class="user-name"><span class="led led-g"></span><span id="hdrName">—</span></div>
-        <div class="user-status">CONNECTED</div>
+      <div class="user-chip">
+        <span class="dot" id="connDot"></span>
+        <span id="hdrName">—</span>
       </div>
     </div>
   </div>
 
-  <!-- Master Controls -->
+  <!-- Master Bar -->
   <div class="master">
-    <div class="m-group">
-      <span class="m-label">VOL מאסטר</span>
-      <input type="range" min="0" max="1" step="0.01" value="1" style="width:100px"
-             id="masterVolSlider"
-             oninput="APP.setMasterVol(+this.value)">
-      <span class="m-val" id="masterVolVal">100%</span>
+    <div class="m-block">
+      <span class="m-label">VOL</span>
+      <input type="range" min="0" max="1" step="0.01" value="1" style="width:90px"
+             oninput="APP.masterVol(+this.value)">
+      <span class="m-val" id="mvVal">100%</span>
     </div>
-    <div class="sep"></div>
-    <button class="btn" id="masterMuteBtn" onclick="APP.toggleMasterMute()">השתק הכל</button>
-    <div class="sep"></div>
-    <!-- Mic Level indicator -->
-    <div class="m-group" style="flex-direction:column;gap:2px;align-items:flex-start">
-      <span class="m-label">MIC LEVEL</span>
-      <div class="mic-vu" style="width:100px"><div class="mic-vu-fill" id="micVU"></div></div>
+    <div class="vdiv"></div>
+    <button class="btn" id="muteAllBtn" onclick="APP.toggleMasterMute()">🔊 Mute All</button>
+    <div class="vdiv"></div>
+    <div class="m-block">
+      <span class="m-label">Mic</span>
+      <div class="mic-bar"><div class="mic-bar-fill" id="micVU"></div></div>
     </div>
-    <div class="sep"></div>
     <div class="spacer"></div>
+    <button class="demo-btn" id="demoBtn" onclick="APP.openDemoModal()">▶ הפעל סימולציה</button>
+    <div class="vdiv"></div>
     <button class="ptt-all" id="pttAllBtn"
             onmousedown="APP.pttAllStart(event)" onmouseup="APP.pttAllStop()"
             ontouchstart="APP.pttAllStart(event)" ontouchend="APP.pttAllStop()">
-      📡 שידור לכולם <span class="hotkey">SPACE</span>
+      <span><span class="hk">SPACE</span>📡 שידור לכל הערוצים</span>
     </button>
-    <div class="sep"></div>
-    <button class="btn" onclick="APP.toggleAddBar()">+ ערוץ חדש</button>
+    <div class="vdiv"></div>
+    <button class="btn" onclick="APP.toggleAddBar()">＋ ערוץ</button>
     <button class="btn" onclick="APP.disconnect()">התנתק</button>
   </div>
 
-  <!-- Add Channel Bar -->
+  <!-- Add Bar -->
   <div class="add-bar" id="addBar">
-    <span class="m-label">הוסף ערוץ:</span>
-    <input id="newChId" type="text" placeholder="CH-007" style="width:90px" maxlength="12"/>
-    <input id="newChName" type="text" placeholder="שם ערוץ" style="width:130px" maxlength="24"/>
-    <button class="btn on-g" onclick="APP.addChannel()">הוסף</button>
+    <span class="m-label">ערוץ חדש:</span>
+    <input id="newChId" type="text" placeholder="CH-007" style="width:100px" maxlength="10"/>
+    <input id="newChName" type="text" placeholder="שם ערוץ" style="width:140px" maxlength="24"/>
+    <button class="btn" style="color:var(--green);border-color:rgba(16,185,129,.25)" onclick="APP.addChannel()">הוסף</button>
     <button class="btn" onclick="APP.toggleAddBar()">ביטול</button>
   </div>
 
-  <!-- Channels Grid -->
+  <!-- Grid -->
   <div class="grid-wrap">
-    <div class="channels-grid" id="grid"></div>
+    <div class="grid" id="grid"></div>
   </div>
 
   <!-- Status Bar -->
-  <div class="statusbar">
-    <div class="s-item"><span class="led led-g"></span><span>SYSTEM ONLINE</span></div>
-    <div class="s-item" id="sbChannels">ערוצים: 0 פעילים</div>
-    <div class="s-item" id="sbPTT">PTT: IDLE</div>
-    <div class="s-item" id="sbPeers">כולל: 0 משתתפים</div>
+  <div class="sbar">
+    <div class="si"><span class="dot-s"></span><span>Online</span></div>
+    <div class="si" id="sbCh">0 ערוצים פעילים</div>
+    <div class="si" id="sbPTT">PTT: Idle</div>
+    <div class="si" id="sbPeers">0 משתתפים</div>
     <div style="flex:1"></div>
-    <div class="s-item">AUDC VOIP SYSTEM · v1.0</div>
+    <div class="si" style="color:var(--text3)">AUDC VoIP v1.0</div>
+  </div>
+</div>
+
+<!-- ══ DEMO MODAL ══ -->
+<div class="demo-overlay" id="demoOverlay">
+  <div class="demo-modal">
+    <div class="dm-title">🎭 הפעלת סימולציית דמו</div>
+    <div class="dm-sub">
+      הסימולציה מצרפת אוטומטית לכל הערוצים ומדמה מפעילים אחרים שמדברים ברציפות.<br>
+      לחץ <strong>PTT ALL</strong> (או Space) כדי לשדר בקולך לכל הערוצים בו-זמנית.
+    </div>
+    <div class="dm-scenario">
+      <div class="dm-s-title">📋 תרחיש: "בדיקת מוכנות מערכת"</div>
+      <div class="dm-step"><span class="dm-step-ch">CH-001</span><span>OPS-2 מדווח מוכנות על קו כללי</span></div>
+      <div class="dm-step"><span class="dm-step-ch">CH-002</span><span>CTRL-1 פותח ועידת ניהול, מחכה לאישורים</span></div>
+      <div class="dm-step"><span class="dm-step-ch">CH-004</span><span>⚠️ ערוץ חירום מופעל — תרגיל</span></div>
+      <div class="dm-step"><span class="dm-step-ch">ALL</span><span>כל הערוצים פעילים — PTT ALL לפריצה לכולם</span></div>
+    </div>
+    <div class="dm-btns">
+      <button class="dm-btn-cancel" onclick="APP.closeDemoModal()">ביטול</button>
+      <button class="dm-btn-start" onclick="APP.startDemo()">הפעל סימולציה ▶</button>
+    </div>
   </div>
 </div>
 
 <script>
-/* =====================================================
-   AUDC VoIP Multi-Channel Telephony System
-   Architecture:
-   - Socket.io for WebRTC signaling
-   - One RTCPeerConnection per (peer × channel)
-   - Per-channel Web Audio GainNode for independent PTT
-   - Mic → per-channel GainNode → WebRTC track
-   - Incoming streams → per-peer GainNode → masterGain → speakers
-===================================================== */
+/* ════════════════════════════════════════════════════
+   AUDC VoIP — Multi-Channel Telephony System
+════════════════════════════════════════════════════ */
 
-const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' }
+const ICE = [
+  {urls:'stun:stun.l.google.com:19302'},
+  {urls:'stun:stun1.l.google.com:19302'},
 ];
 
-const DEFAULT_CHANNELS = [
-  { id: 'CH-001', name: 'קו כללי' },
-  { id: 'CH-002', name: 'ועידה 1' },
-  { id: 'CH-003', name: 'ועידה 2' },
-  { id: 'CH-004', name: 'ערוץ חירום' },
-  { id: 'CH-005', name: 'קו ניהול' },
-  { id: 'CH-006', name: 'שידור כללי' },
+const DEFAULT_CHS = [
+  {id:'CH-001',name:'קו כללי'},
+  {id:'CH-002',name:'ועידה 1'},
+  {id:'CH-003',name:'ועידה 2'},
+  {id:'CH-004',name:'חירום'},
+  {id:'CH-005',name:'קו ניהול'},
+  {id:'CH-006',name:'שידור כללי'},
 ];
 
-// ── Channel State ──────────────────────────────────────────────────────────
-class ChannelState {
-  constructor(id, name, system) {
-    this.id = id;
-    this.name = name;
-    this.sys = system;
-    this.joined = false;
-    this.muted = false;
-    this.volume = 1.0;
-    this.transmitting = false;
-    this.peers = {};     // peerId → { name, pc, srcNode, gainNode, analyser, speaking, audioEl }
-    this.outGain = null; // GainNode for outgoing mic (0=muted, 1=transmit)
-    this.outStream = null;
-    this.micSrc = null;
-    this.vuAnim = null;
-    this.messages = [];  // chat messages
+// ── Demo Simulation ──────────────────────────────────────────
+class Demo {
+  constructor(sys){
+    this.sys = sys;
+    this.running = false;
+    this.timers = [];
+    this.scenario = [
+      {t:500,   ch:'CH-001', name:'OPS-2',     msg:'קו כללי — OPS-2, בדיקת קשר, שמיעה?'},
+      {t:3200,  ch:'CH-002', name:'CTRL-1',    msg:'ועידה 1 פעילה — כל היחידות מדווחות'},
+      {t:5800,  ch:'CH-004', name:'EMERGENCY', msg:'⚠️ תרגיל חירום — ערוץ 4 פעיל'},
+      {t:8500,  ch:'CH-001', name:'OPS-3',     msg:'OPS-3 בקשב — יחידה מוכנה'},
+      {t:11000, ch:'CH-003', name:'CTRL-2',    msg:'ועידה 2 נפתחת — ממתין לאישור'},
+      {t:13500, ch:'CH-005', name:'ADMIN',     msg:'קו ניהול — עדכון לו"ז שעה 15:00'},
+      {t:16000, ch:'CH-002', name:'OPS-4',     msg:'ועידה 1 — OPS-4 מוכן, עובר לשמיעה'},
+      {t:18500, ch:'CH-004', name:'EMERGENCY', msg:'סיום תרגיל חירום — חזרה לשגרה'},
+      {t:21000, ch:'CH-006', name:'BROADCAST', msg:'שידור כללי — בדיקת מערכת הושלמה'},
+      {t:23500, ch:'CH-001', name:'OPS-2',     msg:'קו כללי — מחכה לאישור ממפקד'},
+    ];
   }
 
-  initAudio() {
+  start(){
+    if(this.running) return;
+    this.running = true;
+
+    // join all
+    for(const id of Object.keys(this.sys.channels)){
+      if(!this.sys.channels[id].joined) this.sys.joinChannel(id);
+    }
+
+    // add fake peers
+    this._seedPeers();
+    this._loop();
+  }
+
+  _seedPeers(){
+    const ops = ['OPS-2','OPS-3','CTRL-1','CTRL-2','ADMIN','EMERGENCY','OPS-4','BROADCAST'];
+    for(const [id,ch] of Object.entries(this.sys.channels)){
+      const n = Math.floor(Math.random()*2)+1;
+      for(let i=0;i<n;i++){
+        const name = ops[(Object.keys(ch.peers).length + i) % ops.length];
+        const fid = `demo_${id}_${i}`;
+        if(!ch.peers[fid]){
+          ch.peers[fid] = {name,pc:null,srcNode:null,gainNode:null,analyser:null,speaking:false,audioEl:null,_demo:true};
+        }
+      }
+      this.sys.ui.refresh(id);
+    }
+  }
+
+  _loop(){
+    const run = () => {
+      if(!this.running) return;
+      const maxT = Math.max(...this.scenario.map(e=>e.t)) + 4000;
+      for(const ev of this.scenario){
+        const t = setTimeout(()=>{ if(this.running) this._transmit(ev); }, ev.t);
+        this.timers.push(t);
+      }
+      const loopT = setTimeout(run, maxT);
+      this.timers.push(loopT);
+    };
+    run();
+  }
+
+  _transmit({ch,name,msg}){
+    const channel = this.sys.channels[ch];
+    if(!channel || !channel.joined) return;
+
+    // find demo peer for this name or any demo peer
+    let pid = Object.keys(channel.peers).find(k=>channel.peers[k]._demo && channel.peers[k].name===name);
+    if(!pid) pid = Object.keys(channel.peers).find(k=>channel.peers[k]._demo);
+    if(!pid){
+      pid = `demo_${ch}_tmp`;
+      channel.peers[pid] = {name,pc:null,srcNode:null,gainNode:null,analyser:null,speaking:false,audioEl:null,_demo:true};
+    }
+
+    const dur = 1800 + msg.length * 55;
+    this._playRadio(ch, dur, channel.muted ? 0 : channel.volume);
+
+    channel.peers[pid].name = name;
+    channel.peers[pid].speaking = true;
+    this.sys.ui.refresh(ch);
+
+    // append to tx log
+    this.sys.ui.appendLog(ch, name, msg);
+
+    setTimeout(()=>{
+      if(channel.peers[pid]) channel.peers[pid].speaking = false;
+      this.sys.ui.refresh(ch);
+    }, dur);
+  }
+
+  _playRadio(chId, dur, vol){
     const ctx = this.sys.audioCtx;
-    // Route mic through a per-channel gain so we can PTT independently
+    const ch = this.sys.channels[chId];
+    const rate = ctx.sampleRate;
+    const frames = Math.ceil(rate * dur / 1000);
+    const buf = ctx.createBuffer(1, frames, rate);
+    const d = buf.getChannelData(0);
+
+    // Simulate modulated radio voice (bandpass noise)
+    for(let i=0;i<frames;i++){
+      const t = i/rate;
+      const env = 0.5 + 0.5*Math.sin(2*Math.PI*2.5*t); // slow envelope
+      const tone = Math.sin(2*Math.PI*220*t)*0.3 + Math.sin(2*Math.PI*440*t)*0.15;
+      const noise = (Math.random()*2-1)*0.5;
+      d[i] = (noise + tone) * env * 0.35;
+    }
+
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.8;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 300;
+
+    const gain = ctx.createGain();
+    gain.gain.value = vol * 0.5;
+
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+
+    src.connect(hp); hp.connect(bp); bp.connect(gain);
+    gain.connect(analyser); analyser.connect(this.sys.masterGain);
+
+    src.start();
+    src.stop(ctx.currentTime + dur/1000);
+
+    this._animVU(chId, analyser, dur);
+  }
+
+  _animVU(chId, analyser, dur){
+    const start = Date.now();
+    const tick = ()=>{
+      if(Date.now()-start > dur){
+        const el = document.getElementById('vu-'+chId);
+        if(el) el.style.width = '0%';
+        return;
+      }
+      const d = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(d);
+      const avg = d.reduce((s,v)=>s+v,0)/d.length/128;
+      const el = document.getElementById('vu-'+chId);
+      if(el) el.style.width = Math.min(avg*130,100)+'%';
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  stop(){
+    this.running = false;
+    this.timers.forEach(t=>clearTimeout(t));
+    this.timers = [];
+    for(const ch of Object.values(this.sys.channels)){
+      for(const id of Object.keys(ch.peers)){
+        if(ch.peers[id]._demo) delete ch.peers[id];
+      }
+      this.sys.ui.refresh(ch.id);
+    }
+  }
+}
+
+// ── Channel ───────────────────────────────────────────────────
+class Channel {
+  constructor(id,name,sys){
+    this.id=id; this.name=name; this.sys=sys;
+    this.joined=false; this.muted=false; this.volume=1;
+    this.transmitting=false;
+    this.peers={}; // id->{name,pc,srcNode,gainNode,analyser,speaking,audioEl,_demo}
+    this.outGain=null; this.outStream=null; this.micSrc=null;
+    this.vuAnim=null; this.log=[]; // tx log entries
+  }
+
+  initAudio(){
+    const ctx = this.sys.audioCtx;
     this.micSrc = ctx.createMediaStreamSource(this.sys.localStream);
     this.outGain = ctx.createGain();
-    this.outGain.gain.value = 0; // silent until PTT
+    this.outGain.gain.value = 0;
     const dest = ctx.createMediaStreamDestination();
     this.micSrc.connect(this.outGain);
     this.outGain.connect(dest);
     this.outStream = dest.stream;
   }
 
-  addPeer(peerId, peerName, weInitiate) {
-    if (this.peers[peerId]) return;
-    if (!this.outStream) this.initAudio();
-
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-    this.peers[peerId] = { name: peerName, pc, srcNode: null, gainNode: null, analyser: null, speaking: false, audioEl: null };
-
-    // Outgoing: add per-channel mic track
-    const track = this.outStream.getAudioTracks()[0];
-    if (track) pc.addTrack(track, this.outStream);
-
-    // Incoming
-    pc.ontrack = (e) => this._setupIncoming(peerId, e.streams[0]);
-
-    // ICE
-    pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        this.sys.socket.emit('signal', {
-          to: peerId,
-          channelId: this.id,
-          signal: { type: 'candidate', candidate: e.candidate }
-        });
-      }
+  addPeer(pid, pname, init){
+    if(this.peers[pid]) return;
+    if(!this.outStream) this.initAudio();
+    const pc = new RTCPeerConnection({iceServers:ICE});
+    this.peers[pid] = {name:pname,pc,srcNode:null,gainNode:null,analyser:null,speaking:false,audioEl:null};
+    const tr = this.outStream.getAudioTracks()[0];
+    if(tr) pc.addTrack(tr, this.outStream);
+    pc.ontrack = e => this._incoming(pid, e.streams[0]);
+    pc.onicecandidate = e => {
+      if(e.candidate) this.sys.socket.emit('signal',{to:pid,channelId:this.id,signal:{type:'candidate',candidate:e.candidate}});
     };
-
-    pc.onconnectionstatechange = () => this.sys.ui.refresh(this.id);
-    pc.oniceconnectionstatechange = () => this.sys.ui.refresh(this.id);
-
-    if (weInitiate) {
-      pc.createOffer({ offerToReceiveAudio: true })
-        .then(o => { pc.setLocalDescription(o); return o; })
-        .then(o => {
-          this.sys.socket.emit('signal', {
-            to: peerId, channelId: this.id,
-            signal: { type: 'offer', sdp: o }
-          });
-        });
+    pc.onconnectionstatechange = ()=> this.sys.ui.refresh(this.id);
+    if(init){
+      pc.createOffer({offerToReceiveAudio:true})
+        .then(o=>{ pc.setLocalDescription(o); return o; })
+        .then(o=> this.sys.socket.emit('signal',{to:pid,channelId:this.id,signal:{type:'offer',sdp:o}}));
     }
   }
 
-  handleSignal(fromId, signal) {
-    if (signal.type === 'offer' && !this.peers[fromId]) {
-      this.addPeer(fromId, fromId, false);
-    }
-    const peer = this.peers[fromId];
-    if (!peer) return;
-
-    if (signal.type === 'offer') {
-      peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp))
-        .then(() => peer.pc.createAnswer())
-        .then(a => { peer.pc.setLocalDescription(a); return a; })
-        .then(a => {
-          this.sys.socket.emit('signal', {
-            to: fromId, channelId: this.id,
-            signal: { type: 'answer', sdp: a }
-          });
-        });
-    } else if (signal.type === 'answer') {
-      peer.pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-    } else if (signal.type === 'candidate' && signal.candidate) {
-      peer.pc.addIceCandidate(new RTCIceCandidate(signal.candidate)).catch(() => {});
+  handleSignal(from, sig){
+    if(sig.type==='offer' && !this.peers[from]) this.addPeer(from,from,false);
+    const p = this.peers[from]; if(!p) return;
+    if(sig.type==='offer'){
+      p.pc.setRemoteDescription(new RTCSessionDescription(sig.sdp))
+        .then(()=>p.pc.createAnswer())
+        .then(a=>{ p.pc.setLocalDescription(a); return a; })
+        .then(a=> this.sys.socket.emit('signal',{to:from,channelId:this.id,signal:{type:'answer',sdp:a}}));
+    } else if(sig.type==='answer'){
+      p.pc.setRemoteDescription(new RTCSessionDescription(sig.sdp));
+    } else if(sig.type==='candidate' && sig.candidate){
+      p.pc.addIceCandidate(new RTCIceCandidate(sig.candidate)).catch(()=>{});
     }
   }
 
-  _setupIncoming(peerId, stream) {
-    const peer = this.peers[peerId];
-    if (!peer || !stream) return;
+  _incoming(pid, stream){
+    const p = this.peers[pid]; if(!p||!stream) return;
     const ctx = this.sys.audioCtx;
-
-    // Clean up old nodes
-    if (peer.gainNode) try { peer.gainNode.disconnect(); } catch(e) {}
-    if (peer.analyser) try { peer.analyser.disconnect(); } catch(e) {}
-    if (peer.srcNode) try { peer.srcNode.disconnect(); } catch(e) {}
-
-    const srcNode = ctx.createMediaStreamSource(stream);
-    const gainNode = ctx.createGain();
-    gainNode.gain.value = this.muted ? 0 : this.volume;
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 256;
-
-    srcNode.connect(gainNode);
-    gainNode.connect(analyser);
-    analyser.connect(this.sys.masterGain);
-
-    peer.srcNode = srcNode;
-    peer.gainNode = gainNode;
-    peer.analyser = analyser;
-
-    // Also attach to audio element to prevent GC
-    if (!peer.audioEl) {
-      peer.audioEl = new Audio();
-      peer.audioEl.srcObject = stream;
-      peer.audioEl.muted = true;
-    }
-
-    this._startVU();
-    this.sys.ui.refresh(this.id);
+    try{if(p.gainNode)p.gainNode.disconnect();}catch(e){}
+    try{if(p.srcNode)p.srcNode.disconnect();}catch(e){}
+    const src = ctx.createMediaStreamSource(stream);
+    const gain = ctx.createGain();
+    gain.gain.value = this.muted ? 0 : this.volume;
+    const an = ctx.createAnalyser(); an.fftSize=256;
+    src.connect(gain); gain.connect(an); an.connect(this.sys.masterGain);
+    p.srcNode=src; p.gainNode=gain; p.analyser=an;
+    if(!p.audioEl){ p.audioEl=new Audio(); p.audioEl.srcObject=stream; p.audioEl.muted=true; }
+    this._startVU(); this.sys.ui.refresh(this.id);
   }
 
-  _startVU() {
-    if (this.vuAnim) return;
-    const tick = () => {
-      let max = 0;
-      for (const p of Object.values(this.peers)) {
-        if (!p.analyser) continue;
-        const d = new Uint8Array(p.analyser.frequencyBinCount);
+  _startVU(){
+    if(this.vuAnim) return;
+    const tick = ()=>{
+      let max=0;
+      for(const p of Object.values(this.peers)){
+        if(!p.analyser) continue;
+        const d=new Uint8Array(p.analyser.frequencyBinCount);
         p.analyser.getByteFrequencyData(d);
-        const avg = d.reduce((s, v) => s + v, 0) / d.length / 128;
-        max = Math.max(max, avg);
+        const v=d.reduce((s,v)=>s+v,0)/d.length/128;
+        max=Math.max(max,v);
       }
-      const el = document.getElementById('vu-' + this.id);
-      if (el) el.style.width = Math.min(max * 100, 100) + '%';
-      this.vuAnim = requestAnimationFrame(tick);
+      const el=document.getElementById('vu-'+this.id);
+      if(el) el.style.width=Math.min(max*100,100)+'%';
+      this.vuAnim=requestAnimationFrame(tick);
     };
-    this.vuAnim = requestAnimationFrame(tick);
+    this.vuAnim=requestAnimationFrame(tick);
   }
 
-  setTransmitting(v) {
-    this.transmitting = v;
-    if (this.outGain) this.outGain.gain.value = v ? 1 : 0;
+  setTX(v){ this.transmitting=v; if(this.outGain) this.outGain.gain.value=v?1:0; }
+  updateGain(){ for(const p of Object.values(this.peers)) if(p.gainNode) p.gainNode.gain.value=this.muted?0:this.volume; }
+
+  removePeer(pid){
+    const p=this.peers[pid]; if(!p) return;
+    try{p.pc&&p.pc.close();}catch(e){}
+    try{if(p.gainNode)p.gainNode.disconnect();}catch(e){}
+    try{if(p.srcNode)p.srcNode.disconnect();}catch(e){}
+    delete this.peers[pid];
   }
 
-  updateGain() {
-    for (const p of Object.values(this.peers)) {
-      if (p.gainNode) p.gainNode.gain.value = this.muted ? 0 : this.volume;
-    }
+  cleanup(){
+    if(this.vuAnim){cancelAnimationFrame(this.vuAnim);this.vuAnim=null;}
+    Object.keys(this.peers).forEach(id=>this.removePeer(id));
+    try{if(this.outGain)this.outGain.disconnect();}catch(e){}
+    try{if(this.micSrc)this.micSrc.disconnect();}catch(e){}
+    this.outStream=null;
   }
 
-  removePeer(peerId) {
-    const p = this.peers[peerId];
-    if (!p) return;
-    try { p.pc.close(); } catch(e) {}
-    try { if (p.gainNode) p.gainNode.disconnect(); } catch(e) {}
-    try { if (p.analyser) p.analyser.disconnect(); } catch(e) {}
-    try { if (p.srcNode) p.srcNode.disconnect(); } catch(e) {}
-    delete this.peers[peerId];
-  }
-
-  cleanup() {
-    if (this.vuAnim) { cancelAnimationFrame(this.vuAnim); this.vuAnim = null; }
-    for (const id of Object.keys(this.peers)) this.removePeer(id);
-    try { if (this.outGain) this.outGain.disconnect(); } catch(e) {}
-    try { if (this.micSrc) this.micSrc.disconnect(); } catch(e) {}
-    this.outStream = null;
-  }
-
-  isRX() { return Object.values(this.peers).some(p => p.speaking); }
-  peerList() { return Object.values(this.peers).map(p => ({ name: p.name, speaking: p.speaking })); }
-  peerCount() { return Object.keys(this.peers).length; }
+  isRX(){ return Object.values(this.peers).some(p=>p.speaking); }
+  peers_list(){ return Object.values(this.peers).map(p=>({name:p.name,speaking:p.speaking})); }
 }
 
-// ── VoIP System ────────────────────────────────────────────────────────────
-class VoIPSystem {
-  constructor() {
-    this.socket = null;
-    this.localStream = null;
-    this.audioCtx = null;
-    this.masterGain = null;
-    this.masterVol = 1.0;
-    this.masterMuted = false;
-    this.micAnalyser = null;
-    this.channels = {};
-    this.activePTT = new Set();
-    this.displayName = '';
-    this.ui = new UI(this);
-    this.clockInterval = null;
-    this.micVUAnim = null;
+// ── System ────────────────────────────────────────────────────
+class System {
+  constructor(){
+    this.socket=null; this.localStream=null;
+    this.audioCtx=null; this.masterGain=null;
+    this.masterVol=1; this.masterMuted=false;
+    this.micAnalyser=null; this.channels={};
+    this.activePTT=new Set(); this.displayName='';
+    this.ui=new UI(this); this.demo=null;
+    this._clockId=null; this._micVUId=null;
   }
 
-  async connect(name, serverUrl) {
-    this.displayName = name;
+  async connect(name, serverUrl){
+    this.displayName=name;
+    try{
+      this.localStream = await navigator.mediaDevices.getUserMedia(
+        {audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false}
+      );
+    }catch(e){ return 'שגיאה במיקרופון: '+e.message; }
 
-    // Mic access
-    try {
-      this.localStream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false
-      });
-    } catch (e) {
-      return 'שגיאה בגישה למיקרופון: ' + e.message;
-    }
-
-    // Audio context
-    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (this.audioCtx.state === 'suspended') await this.audioCtx.resume();
-
+    this.audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    if(this.audioCtx.state==='suspended') await this.audioCtx.resume();
     this.masterGain = this.audioCtx.createGain();
-    this.masterGain.gain.value = this.masterVol;
+    this.masterGain.gain.value = 1;
     this.masterGain.connect(this.audioCtx.destination);
 
-    // Mic level analyser (for VU in master panel)
     this.micAnalyser = this.audioCtx.createAnalyser();
-    this.micAnalyser.fftSize = 256;
-    const micSrc = this.audioCtx.createMediaStreamSource(this.localStream);
-    micSrc.connect(this.micAnalyser);
+    this.micAnalyser.fftSize=256;
+    const ms = this.audioCtx.createMediaStreamSource(this.localStream);
+    ms.connect(this.micAnalyser);
     this._startMicVU();
 
-    // Signaling
+    this.demo = new Demo(this);
+
     this.socket = io(serverUrl);
-
-    await new Promise((resolve, reject) => {
-      this.socket.on('connect', resolve);
-      this.socket.on('connect_error', reject);
-      setTimeout(reject, 8000);
+    await new Promise((res,rej)=>{
+      this.socket.on('connect',res);
+      this.socket.on('connect_error',rej);
+      setTimeout(rej,8000);
     });
-
-    this._setupSocketHandlers();
-    return null; // success
+    this._handlers();
+    return null;
   }
 
-  _setupSocketHandlers() {
-    this.socket.on('channel-peers', ({ channelId, peers }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      for (const p of peers) ch.addPeer(p.id, p.name, true);
+  _handlers(){
+    this.socket.on('channel-peers',({channelId,peers})=>{
+      const ch=this.channels[channelId]; if(!ch) return;
+      peers.forEach(p=>ch.addPeer(p.id,p.name,true));
     });
-
-    this.socket.on('peer-joined', ({ channelId, peerId, name }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      ch.addPeer(peerId, name, false);
+    this.socket.on('peer-joined',({channelId,peerId,name})=>{
+      const ch=this.channels[channelId]; if(!ch) return;
+      ch.addPeer(peerId,name,false); this.ui.refresh(channelId);
+    });
+    this.socket.on('peer-left',({channelId,peerId})=>{
+      const ch=this.channels[channelId]; if(!ch) return;
+      ch.removePeer(peerId); this.ui.refresh(channelId);
+    });
+    this.socket.on('signal',({from,channelId,signal})=>{
+      const ch=this.channels[channelId]; if(!ch||!ch.joined) return;
+      ch.handleSignal(from,signal);
+    });
+    this.socket.on('ptt-start',({peerId,channelId})=>{
+      const ch=this.channels[channelId]; if(!ch) return;
+      const p=ch.peers[peerId]; if(p) p.speaking=true;
       this.ui.refresh(channelId);
     });
-
-    this.socket.on('peer-left', ({ channelId, peerId }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      ch.removePeer(peerId);
+    this.socket.on('ptt-stop',({peerId,channelId})=>{
+      const ch=this.channels[channelId]; if(!ch) return;
+      const p=ch.peers[peerId]; if(p) p.speaking=false;
       this.ui.refresh(channelId);
     });
-
-    this.socket.on('signal', ({ from, channelId, signal }) => {
-      const ch = this.channels[channelId];
-      if (!ch || !ch.joined) return;
-      ch.handleSignal(from, signal);
-    });
-
-    this.socket.on('ptt-start', ({ peerId, channelId }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      const p = ch.peers[peerId];
-      if (p) p.speaking = true;
-      this.ui.refresh(channelId);
-    });
-
-    this.socket.on('ptt-stop', ({ peerId, channelId }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      const p = ch.peers[peerId];
-      if (p) p.speaking = false;
-      this.ui.refresh(channelId);
-    });
-
-    this.socket.on('chat', ({ channelId, text, name }) => {
-      const ch = this.channels[channelId];
-      if (!ch) return;
-      ch.messages.push({ name, text });
-      if (ch.messages.length > 50) ch.messages.shift();
-      this.ui.appendChat(channelId, name, text);
-    });
   }
 
-  joinChannel(id) {
-    const ch = this.channels[id];
-    if (!ch || ch.joined) return;
-    ch.joined = true;
-    this.socket.emit('join-channel', { channelId: id, displayName: this.displayName });
-    this.ui.refresh(id);
-    this._updateStatusBar();
+  joinChannel(id){
+    const ch=this.channels[id]; if(!ch||ch.joined) return;
+    ch.joined=true;
+    this.socket.emit('join-channel',{channelId:id,displayName:this.displayName});
+    this.ui.refresh(id); this._sb();
   }
-
-  leaveChannel(id) {
-    const ch = this.channels[id];
-    if (!ch || !ch.joined) return;
-    this.stopPTT(id);
-    ch.cleanup();
-    ch.joined = false;
-    this.socket.emit('leave-channel', { channelId: id });
-    this.ui.refresh(id);
-    this._updateStatusBar();
+  leaveChannel(id){
+    const ch=this.channels[id]; if(!ch||!ch.joined) return;
+    this.stopPTT(id); ch.cleanup(); ch.joined=false;
+    this.socket.emit('leave-channel',{channelId:id});
+    this.ui.refresh(id); this._sb();
   }
-
-  startPTT(id) {
-    const ch = this.channels[id];
-    if (!ch || !ch.joined || this.activePTT.has(id)) return;
-    this.activePTT.add(id);
-    ch.setTransmitting(true);
-    this.socket.emit('ptt-start', { channelId: id });
-    this.ui.refresh(id);
-    this._updateStatusBar();
+  startPTT(id){
+    const ch=this.channels[id]; if(!ch||!ch.joined||this.activePTT.has(id)) return;
+    this.activePTT.add(id); ch.setTX(true);
+    this.socket.emit('ptt-start',{channelId:id});
+    this.ui.refresh(id); this._sb();
   }
-
-  stopPTT(id) {
-    if (!this.activePTT.has(id)) return;
+  stopPTT(id){
+    if(!this.activePTT.has(id)) return;
     this.activePTT.delete(id);
-    const ch = this.channels[id];
-    if (ch) {
-      ch.setTransmitting(false);
-      this.socket.emit('ptt-stop', { channelId: id });
-      this.ui.refresh(id);
-    }
-    this._updateStatusBar();
+    const ch=this.channels[id]; if(ch){ ch.setTX(false); this.socket.emit('ptt-stop',{channelId:id}); this.ui.refresh(id); }
+    this._sb();
   }
+  startPTTAll(){ for(const id of Object.keys(this.channels)) if(this.channels[id].joined) this.startPTT(id); document.getElementById('pttAllBtn').classList.add('active'); }
+  stopPTTAll(){ for(const id of Object.keys(this.channels)) this.stopPTT(id); document.getElementById('pttAllBtn').classList.remove('active'); }
 
-  startPTTAll() {
-    for (const id of Object.keys(this.channels)) {
-      if (this.channels[id].joined) this.startPTT(id);
-    }
-    document.getElementById('pttAllBtn').classList.add('active');
-  }
+  setVol(id,v){ const ch=this.channels[id]; if(!ch) return; ch.volume=v; ch.updateGain(); }
+  toggleMute(id){ const ch=this.channels[id]; if(!ch) return; ch.muted=!ch.muted; ch.updateGain(); this.ui.refresh(id); }
+  setMasterVol(v){ this.masterVol=v; if(this.masterGain) this.masterGain.gain.value=this.masterMuted?0:v; document.getElementById('mvVal').textContent=Math.round(v*100)+'%'; }
+  toggleMasterMute(){ this.masterMuted=!this.masterMuted; if(this.masterGain) this.masterGain.gain.value=this.masterMuted?0:this.masterVol; const b=document.getElementById('muteAllBtn'); b.textContent=this.masterMuted?'🔇 Unmute All':'🔊 Mute All'; b.className=this.masterMuted?'btn active-red':'btn'; }
 
-  stopPTTAll() {
-    for (const id of Object.keys(this.channels)) this.stopPTT(id);
-    document.getElementById('pttAllBtn').classList.remove('active');
-  }
+  addChannel(id,name){ if(this.channels[id]) return; this.channels[id]=new Channel(id,name||id,this); this.ui.renderCard(id); this._sb(); }
 
-  setChannelVol(id, val) {
-    const ch = this.channels[id];
-    if (!ch) return;
-    ch.volume = val;
-    ch.updateGain();
-  }
-
-  toggleChannelMute(id) {
-    const ch = this.channels[id];
-    if (!ch) return;
-    ch.muted = !ch.muted;
-    ch.updateGain();
-    this.ui.refresh(id);
-  }
-
-  setMasterVol(val) {
-    this.masterVol = val;
-    if (this.masterGain) this.masterGain.gain.value = this.masterMuted ? 0 : val;
-    document.getElementById('masterVolVal').textContent = Math.round(val * 100) + '%';
-  }
-
-  toggleMasterMute() {
-    this.masterMuted = !this.masterMuted;
-    if (this.masterGain) this.masterGain.gain.value = this.masterMuted ? 0 : this.masterVol;
-    const btn = document.getElementById('masterMuteBtn');
-    btn.textContent = this.masterMuted ? '🔇 כל-האודיו מושתק' : 'השתק הכל';
-    btn.className = this.masterMuted ? 'btn on-r' : 'btn';
-  }
-
-  addChannel(id, name) {
-    if (this.channels[id]) return;
-    this.channels[id] = new ChannelState(id, name || id, this);
-    this.ui.renderCard(id);
-    this._updateStatusBar();
-  }
-
-  sendChat(channelId, text) {
-    if (!text.trim()) return;
-    const ch = this.channels[channelId];
-    if (!ch || !ch.joined) return;
-    this.socket.emit('chat', { channelId, text: text.trim(), name: this.displayName });
-  }
-
-  _startMicVU() {
-    const tick = () => {
-      if (!this.micAnalyser) return;
-      const d = new Uint8Array(this.micAnalyser.frequencyBinCount);
+  _startMicVU(){
+    const tick=()=>{
+      if(!this.micAnalyser) return;
+      const d=new Uint8Array(this.micAnalyser.frequencyBinCount);
       this.micAnalyser.getByteFrequencyData(d);
-      const avg = d.reduce((s, v) => s + v, 0) / d.length / 128;
-      // Show mic VU only when any PTT active
-      const level = this.activePTT.size > 0 ? Math.min(avg * 100, 100) : 0;
-      const el = document.getElementById('micVU');
-      if (el) el.style.width = level + '%';
-      this.micVUAnim = requestAnimationFrame(tick);
+      const avg=d.reduce((s,v)=>s+v,0)/d.length/128;
+      const el=document.getElementById('micVU');
+      if(el) el.style.width=(this.activePTT.size>0?Math.min(avg*100,100):0)+'%';
+      this._micVUId=requestAnimationFrame(tick);
     };
-    this.micVUAnim = requestAnimationFrame(tick);
+    this._micVUId=requestAnimationFrame(tick);
   }
 
-  _updateStatusBar() {
-    const joined = Object.values(this.channels).filter(c => c.joined).length;
-    const peers = Object.values(this.channels).reduce((n, c) => n + c.peerCount(), 0);
-    const sbCh = document.getElementById('sbChannels');
-    const sbPTT = document.getElementById('sbPTT');
-    const sbPeers = document.getElementById('sbPeers');
-    if (sbCh) sbCh.textContent = `ערוצים: ${joined} פעילים`;
-    if (sbPTT) sbPTT.textContent = this.activePTT.size ? 'TX: ' + [...this.activePTT].join(', ') : 'PTT: IDLE';
-    if (sbPeers) sbPeers.textContent = `כולל: ${peers} משתתפים`;
+  _sb(){
+    const joined=Object.values(this.channels).filter(c=>c.joined).length;
+    const peers=Object.values(this.channels).reduce((n,c)=>n+Object.keys(c.peers).length,0);
+    const sbCh=document.getElementById('sbCh'); if(sbCh) sbCh.textContent=`${joined} ערוצים פעילים`;
+    const sbPTT=document.getElementById('sbPTT'); if(sbPTT) sbPTT.textContent=this.activePTT.size?'TX: '+[...this.activePTT].join(', '):'PTT: Idle';
+    const sbP=document.getElementById('sbPeers'); if(sbP) sbP.textContent=`${peers} משתתפים`;
   }
 }
 
-// ── UI ─────────────────────────────────────────────────────────────────────
+// ── UI ────────────────────────────────────────────────────────
 class UI {
-  constructor(sys) { this.sys = sys; }
+  constructor(sys){ this.sys=sys; }
 
-  showMain() {
-    document.getElementById('loginScreen').classList.remove('active');
+  showMain(){
+    document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainScreen').classList.add('active');
-    document.getElementById('hdrName').textContent = this.sys.displayName;
-    this._startClock();
-    this._setupGlobalKeys();
+    document.getElementById('hdrName').textContent=this.sys.displayName;
+    this._clock(); this._keys();
   }
 
-  renderCard(id) {
-    const grid = document.getElementById('grid');
-    if (!grid) return;
-    const div = document.createElement('div');
-    div.id = 'card-' + id;
-    div.innerHTML = this._cardHTML(id);
-    grid.appendChild(div);
+  renderCard(id){
+    const g=document.getElementById('grid'); if(!g) return;
+    const d=document.createElement('div');
+    d.id='wrap-'+id; d.innerHTML=this._html(id); g.appendChild(d);
   }
 
-  refresh(id) {
-    const wrap = document.getElementById('card-' + id);
-    if (!wrap) return;
-    wrap.innerHTML = this._cardHTML(id);
-    this.sys._updateStatusBar();
+  refresh(id){
+    const w=document.getElementById('wrap-'+id); if(!w) return;
+    // preserve log scroll position
+    const logEl=document.getElementById('log-'+id);
+    const scrollTop = logEl ? logEl.scrollTop : 0;
+    const wasAtBottom = logEl ? (logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight < 10) : true;
+    w.innerHTML=this._html(id);
+    const newLog=document.getElementById('log-'+id);
+    if(newLog){ newLog.scrollTop = wasAtBottom ? newLog.scrollHeight : scrollTop; }
+    this.sys._sb();
   }
 
-  _cardHTML(id) {
-    const ch = this.sys.channels[id];
-    const isTX = this.sys.activePTT.has(id);
-    const isRX = ch.isRX();
-    const peers = ch.peerList();
-    const cls = ['ch-card', ch.joined ? 'joined' : '', isRX ? 'rx' : '', isTX ? 'tx' : ''].filter(Boolean).join(' ');
+  _html(id){
+    const ch=this.sys.channels[id];
+    const isTX=this.sys.activePTT.has(id);
+    const isRX=ch.isRX();
+    const peers=ch.peers_list();
+    const cls=['card',ch.joined?'joined':'',isRX?'rx':'',isTX?'tx':''].filter(Boolean).join(' ');
 
-    const peerTags = ch.joined
+    const peerHtml = ch.joined
       ? (peers.length
-          ? peers.map(p => `<span class="ptag${p.speaking ? ' speaking' : ''}">${p.name}</span>`).join('')
-          : `<span class="no-peers">אין משתתפים נוספים</span>`)
-      : `<span class="no-peers">לא מחובר לערוץ</span>`;
+          ? peers.map(p=>`<div class="peer-tag${p.speaking?' spk':''}"><span class="pdot"></span>${p.name}</div>`).join('')
+          : `<span class="no-peer">ממתין למשתתפים...</span>`)
+      : `<span class="no-peer">לא מחובר</span>`;
 
-    const chatMsgs = ch.messages.slice(-6).map(m =>
-      `<div class="chat-msg"><span class="chat-who">${m.name}:</span><span class="chat-txt">${escHtml(m.text)}</span></div>`
-    ).join('');
+    const logHtml = ch.log.length
+      ? ch.log.slice(-8).map(e=>`<div class="tx-entry"><span class="tx-who">${e.name}</span><span class="tx-text">${esc(e.msg)}</span></div>`).join('')
+      : `<span class="tx-empty">אין שידורים</span>`;
 
-    return `<div class="${cls}" id="card-${id}">
-  <div class="ch-head">
+    return `<div class="${cls}">
+  <div class="card-hdr">
     <div>
-      <div class="ch-id">${id}</div>
-      <div class="ch-name">${ch.name}</div>
+      <div class="card-id">${id}</div>
+      <div class="card-name">${ch.name}</div>
+      <div class="indics">
+        <span class="indic i-rx${isRX?' on':''}">RX</span>
+        <span class="indic i-tx${isTX?' on':''}">TX</span>
+      </div>
     </div>
-    <div class="ch-indics">
-      <span class="indic indic-rx${isRX ? ' on' : ''}">RX</span>
-      <span class="indic indic-tx${isTX ? ' on' : ''}">TX</span>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+      ${ch.joined
+        ? `<button class="ctrl-btn leave" onclick="APP.leave('${id}')">עזוב</button>`
+        : `<button class="ctrl-btn join" onclick="APP.join('${id}')">הצטרף</button>`}
     </div>
   </div>
-  <div class="ch-body">
-    <div class="participants" id="pts-${id}">${peerTags}</div>
-    <div class="vu"><div class="vu-fill" id="vu-${id}"></div></div>
+  <div class="card-body">
+    <div class="peers">${peerHtml}</div>
+    <div class="vu-wrap">
+      <span class="vu-label">RX</span>
+      <div class="vu"><div class="vu-fill" id="vu-${id}"></div></div>
+    </div>
     <div class="vol-row">
-      <span class="vol-icon" title="השתק/הפעל" onclick="APP.toggleMute('${id}')">${ch.muted ? '🔇' : '🔊'}</span>
-      <input type="range" class="vol-slider" min="0" max="1" step="0.01" value="${ch.volume}"
-             ${!ch.joined ? 'disabled' : ''}
-             oninput="APP.setVol('${id}',+this.value);document.getElementById('vv-${id}').textContent=Math.round(this.value*100)+'%'">
-      <span id="vv-${id}" class="m-val">${Math.round(ch.volume * 100)}%</span>
+      <span class="vol-icon" onclick="APP.toggleMute('${id}')">${ch.muted?'🔇':'🔊'}</span>
+      <input type="range" class="vslider" min="0" max="1" step="0.01" value="${ch.volume}"
+             ${!ch.joined?'disabled':''}
+             oninput="APP.setVol('${id}',+this.value);document.getElementById('vp-${id}').textContent=Math.round(this.value*100)+'%'">
+      <span id="vp-${id}" class="vol-pct">${Math.round(ch.volume*100)}%</span>
     </div>
-    <div class="ctrl-row">
-      ${ch.joined
-        ? `<button class="ctrl-btn joined" onclick="APP.leave('${id}')">עזוב</button>`
-        : `<button class="ctrl-btn notjoined" onclick="APP.join('${id}')">הצטרף</button>`}
-      <button class="ctrl-btn ${ch.muted ? 'muted' : ''}" onclick="APP.toggleMute('${id}')" ${!ch.joined ? 'disabled' : ''}>
-        ${ch.muted ? 'בטל השתקה' : 'השתק שמיעה'}
-      </button>
-      <span class="peer-count">${peers.length} משתתף${peers.length !== 1 ? 'ים' : ''}</span>
-    </div>
-    <button class="ptt-btn${isTX ? ' active' : ''}" id="ptt-${id}"
-            ${!ch.joined ? 'disabled' : ''}
+    <button class="ptt${isTX?' active':''}" id="ptt-${id}"
+            ${!ch.joined?'disabled':''}
             onmousedown="APP.pttStart('${id}',event)" onmouseup="APP.pttStop('${id}')"
             ontouchstart="APP.pttStart('${id}',event)" ontouchend="APP.pttStop('${id}')"
             onmouseleave="APP.pttStop('${id}')">
-      ${isTX ? '🔴 TX — שידור פעיל...' : '📡 PTT — לחץ לשידור'}
+      <span class="ptt-icon">${isTX?'🔴':'📡'}</span>
+      <span class="ptt-txt">${isTX?'TX — שידור פעיל...':'PTT — לחץ לשידור'}</span>
     </button>
   </div>
-  <div class="ch-chat">
-    <div class="chat-log" id="clog-${id}">${chatMsgs}</div>
-    <div class="chat-input-row">
-      <input class="chat-input" id="cin-${id}" type="text" placeholder="הקלד הודעה..." maxlength="200"
-             ${!ch.joined ? 'disabled' : ''}
-             onkeydown="if(event.key==='Enter')APP.sendChat('${id}')">
-      <button class="chat-send" onclick="APP.sendChat('${id}')" ${!ch.joined ? 'disabled' : ''}>שלח</button>
-    </div>
-  </div>
+  <div class="tx-log" id="log-${id}">${logHtml}</div>
 </div>`;
   }
 
-  appendChat(channelId, name, text) {
-    const log = document.getElementById('clog-' + channelId);
-    if (!log) return;
-    const div = document.createElement('div');
-    div.className = 'chat-msg';
-    div.innerHTML = `<span class="chat-who">${name}:</span><span class="chat-txt">${escHtml(text)}</span>`;
-    log.appendChild(div);
-    log.scrollTop = log.scrollHeight;
+  appendLog(channelId, name, msg){
+    const ch=this.sys.channels[channelId]; if(!ch) return;
+    ch.log.push({name,msg}); if(ch.log.length>50) ch.log.shift();
+    const log=document.getElementById('log-'+channelId); if(!log) return;
+    // remove empty placeholder
+    const empty=log.querySelector('.tx-empty'); if(empty) empty.remove();
+    const d=document.createElement('div');
+    d.className='tx-entry';
+    d.innerHTML=`<span class="tx-who">${name}</span><span class="tx-text">${esc(msg)}</span>`;
+    log.appendChild(d);
+    log.scrollTop=log.scrollHeight;
   }
 
-  _startClock() {
-    const tick = () => {
-      const n = new Date();
-      const t = [n.getHours(), n.getMinutes(), n.getSeconds()]
-        .map(v => String(v).padStart(2, '0')).join(':');
-      const el = document.getElementById('clock');
-      if (el) el.textContent = t;
+  _clock(){
+    const tick=()=>{
+      const n=new Date();
+      const t=[n.getHours(),n.getMinutes(),n.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+      const el=document.getElementById('clock'); if(el) el.textContent=t;
     };
-    tick();
-    this.sys.clockInterval = setInterval(tick, 1000);
+    tick(); this.sys._clockId=setInterval(tick,1000);
   }
 
-  _setupGlobalKeys() {
-    document.addEventListener('keydown', (e) => {
-      if (e.repeat) return;
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if (e.code === 'Space') {
-        e.preventDefault();
-        APP.pttAllStart(e);
-      }
+  _keys(){
+    document.addEventListener('keydown',e=>{
+      if(e.repeat||['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+      if(e.code==='Space'){ e.preventDefault(); APP.pttAllStart(e); }
     });
-    document.addEventListener('keyup', (e) => {
-      if (e.code === 'Space') APP.pttAllStop();
+    document.addEventListener('keyup',e=>{
+      if(e.code==='Space') APP.pttAllStop();
     });
   }
 }
 
-// ── App Controller ──────────────────────────────────────────────────────────
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── App Controller ────────────────────────────────────────────
 const APP = {
-  system: new VoIPSystem(),
+  sys: new System(),
+  _demoRunning: false,
 
-  async connect() {
-    const name = (document.getElementById('inName').value.trim() || 'OPS-' + Math.floor(Math.random() * 900 + 100));
-    const server = document.getElementById('inServer').value.trim() || window.location.origin;
-    const btn = document.getElementById('connectBtn');
-    const err = document.getElementById('loginErr');
-    err.textContent = '';
-    btn.disabled = true;
-    btn.textContent = 'מתחבר...';
+  async connect(){
+    const name=(document.getElementById('inName').value.trim()||'OPS-'+Math.floor(Math.random()*900+100));
+    const server=document.getElementById('inServer').value.trim()||window.location.origin;
+    const btn=document.getElementById('connectBtn');
+    const err=document.getElementById('loginErr');
+    err.textContent=''; btn.disabled=true; btn.textContent='מתחבר...';
 
-    const error = await this.system.connect(name, server);
-    if (error) {
-      err.textContent = error;
-      btn.disabled = false;
-      btn.textContent = 'התחבר / CONNECT';
-      return;
-    }
+    const e=await this.sys.connect(name,server);
+    if(e){ err.textContent=e; btn.disabled=false; btn.textContent='התחבר למערכת'; return; }
 
-    this.system.ui.showMain();
-
-    // Init default channels
-    for (const ch of DEFAULT_CHANNELS) {
-      this.system.addChannel(ch.id, ch.name);
-    }
+    this.sys.ui.showMain();
+    DEFAULT_CHS.forEach(ch=>this.sys.addChannel(ch.id,ch.name));
   },
 
-  join(id) { this.system.joinChannel(id); },
-  leave(id) { this.system.leaveChannel(id); },
+  join(id){ this.sys.joinChannel(id); },
+  leave(id){ this.sys.leaveChannel(id); },
+  pttStart(id,e){ if(e){e.preventDefault();e.stopPropagation();} this.sys.startPTT(id); },
+  pttStop(id){ this.sys.stopPTT(id); },
+  pttAllStart(e){ if(e){e.preventDefault();} this.sys.startPTTAll(); },
+  pttAllStop(){ this.sys.stopPTTAll(); },
+  setVol(id,v){ this.sys.setVol(id,v); },
+  toggleMute(id){ this.sys.toggleMute(id); },
+  masterVol(v){ this.sys.setMasterVol(v); },
+  toggleMasterMute(){ this.sys.toggleMasterMute(); },
 
-  pttStart(id, e) { if (e) e.preventDefault(); this.system.startPTT(id); },
-  pttStop(id) { this.system.stopPTT(id); },
+  openDemoModal(){
+    document.getElementById('demoOverlay').classList.add('open');
+  },
+  closeDemoModal(){
+    document.getElementById('demoOverlay').classList.remove('open');
+  },
+  startDemo(){
+    this.closeDemoModal();
+    if(this._demoRunning){ this.sys.demo.stop(); this._demoRunning=false; document.getElementById('demoBtn').textContent='▶ הפעל סימולציה'; document.getElementById('demoBtn').classList.remove('running'); document.getElementById('demoBadge').classList.remove('visible'); return; }
+    this._demoRunning=true;
+    this.sys.demo.start();
+    document.getElementById('demoBtn').textContent='■ עצור סימולציה';
+    document.getElementById('demoBtn').classList.add('running');
+    document.getElementById('demoBadge').classList.add('visible');
+  },
 
-  pttAllStart(e) { if (e) e.preventDefault(); this.system.startPTTAll(); },
-  pttAllStop() { this.system.stopPTTAll(); },
-
-  setVol(id, v) { this.system.setChannelVol(id, v); },
-  toggleMute(id) { this.system.toggleChannelMute(id); },
-
-  toggleMasterMute() { this.system.toggleMasterMute(); },
-
-  addChannel() {
-    const id = document.getElementById('newChId')?.value?.trim().toUpperCase();
-    const name = document.getElementById('newChName')?.value?.trim();
-    if (!id) return;
-    if (this.system.channels[id]) { alert('ערוץ ' + id + ' כבר קיים'); return; }
-    this.system.addChannel(id, name || id);
+  toggleAddBar(){ document.getElementById('addBar').classList.toggle('open'); },
+  addChannel(){
+    const id=document.getElementById('newChId')?.value?.trim().toUpperCase();
+    const name=document.getElementById('newChName')?.value?.trim();
+    if(!id) return;
+    if(this.sys.channels[id]){ alert('ערוץ '+id+' כבר קיים'); return; }
+    this.sys.addChannel(id,name||id);
     document.getElementById('addBar').classList.remove('open');
-    document.getElementById('newChId').value = '';
-    document.getElementById('newChName').value = '';
+    document.getElementById('newChId').value='';
+    document.getElementById('newChName').value='';
   },
 
-  toggleAddBar() {
-    document.getElementById('addBar').classList.toggle('open');
-  },
-
-  sendChat(channelId) {
-    const inp = document.getElementById('cin-' + channelId);
-    if (!inp) return;
-    this.system.sendChat(channelId, inp.value);
-    inp.value = '';
-  },
-
-  disconnect() {
-    if (!confirm('להתנתק מהמערכת?')) return;
-    for (const id of Object.keys(this.system.channels)) {
-      if (this.system.channels[id].joined) this.system.leaveChannel(id);
-    }
-    if (this.system.socket) this.system.socket.disconnect();
-    if (this.system.clockInterval) clearInterval(this.system.clockInterval);
+  disconnect(){
+    if(!confirm('להתנתק?')) return;
+    if(this._demoRunning) this.sys.demo.stop();
+    Object.keys(this.sys.channels).forEach(id=>{ if(this.sys.channels[id].joined) this.sys.leaveChannel(id); });
+    if(this.sys.socket) this.sys.socket.disconnect();
+    if(this.sys._clockId) clearInterval(this.sys._clockId);
     location.reload();
   }
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-// Set default server URL
+// Set default server
 document.getElementById('inServer').value = window.location.origin;
 
-// Prevent context menu on PTT buttons (long press on mobile)
-document.addEventListener('contextmenu', (e) => {
-  if (e.target.classList.contains('ptt-btn') || e.target.classList.contains('ptt-all')) {
-    e.preventDefault();
-  }
-});
+// Block context menu on PTT buttons
+document.addEventListener('contextmenu',e=>{ if(e.target.closest('.ptt,.ptt-all')) e.preventDefault(); });
 </script>
 </body>
 </html>
