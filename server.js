@@ -3,13 +3,93 @@ const { createServer } = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 
+// ── Optional Twilio integration ──────────────────────────────
+// Set these env vars (or create a .env file and npm install dotenv):
+//   TWILIO_ACCOUNT_SID=ACxxxxxxxx
+//   TWILIO_API_KEY=SKxxxxxxxx
+//   TWILIO_API_SECRET=xxxxxxxx
+//   TWILIO_TWIML_APP_SID=APxxxxxxxx
+//   TWILIO_PHONE_NUMBER=+1xxxxxxxxxx
+try { require('dotenv').config(); } catch(e) {}
+
+const twilioEnabled = !!(
+  process.env.TWILIO_ACCOUNT_SID &&
+  process.env.TWILIO_API_KEY &&
+  process.env.TWILIO_API_SECRET &&
+  process.env.TWILIO_TWIML_APP_SID
+);
+
+let twilioClient = null, AccessToken = null, VoiceGrant = null, VoiceResponse = null;
+if (twilioEnabled) {
+  const twilio = require('twilio');
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  AccessToken  = twilio.jwt.AccessToken;
+  VoiceGrant   = AccessToken.VoiceGrant;
+  VoiceResponse = twilio.twiml.VoiceResponse;
+  console.log('[Twilio] ✓ enabled — phone:', process.env.TWILIO_PHONE_NUMBER || '(not set)');
+} else {
+  console.log('[Twilio] not configured — set TWILIO_* env vars to enable PSTN calling');
+}
+
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Twilio REST endpoints ────────────────────────────────────
+// GET /api/twilio/status — is Twilio configured?
+app.get('/api/twilio/status', (req, res) => {
+  res.json({
+    enabled: twilioEnabled,
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER || null,
+  });
+});
+
+// GET /api/twilio/token?identity=OPS-1 — generate browser access token
+app.get('/api/twilio/token', (req, res) => {
+  if (!twilioEnabled) return res.status(503).json({ error: 'Twilio not configured on server' });
+  const identity = (req.query.identity || 'user').replace(/[^a-zA-Z0-9_\-@.]/g, '_');
+  const token = new AccessToken(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_API_KEY,
+    process.env.TWILIO_API_SECRET,
+    { identity, ttl: 3600 }
+  );
+  token.addGrant(new VoiceGrant({
+    outgoingApplicationSid: process.env.TWILIO_TWIML_APP_SID,
+    incomingAllow: true,
+  }));
+  res.json({ token: token.toJwt(), identity, phoneNumber: process.env.TWILIO_PHONE_NUMBER || null });
+});
+
+// POST /api/twilio/voice — TwiML for outbound calls (set as Voice Request URL in TwiML App)
+app.post('/api/twilio/voice', (req, res) => {
+  if (!twilioEnabled) return res.status(503).send('<?xml version="1.0"?><Response><Say>Not configured</Say></Response>');
+  const twiml = new VoiceResponse();
+  const to = req.body.To;
+  if (to && to.startsWith('client:')) {
+    // browser-to-browser via Twilio
+    twiml.dial().client(to.replace('client:', ''));
+  } else if (to) {
+    // browser-to-PSTN
+    twiml.dial({ callerId: process.env.TWILIO_PHONE_NUMBER }).number(to);
+  } else {
+    twiml.say({ language: 'he-IL' }, 'שיחה נכנסת ממערכת AUDC');
+  }
+  res.type('text/xml').send(twiml.toString());
+});
+
+// POST /api/twilio/status-callback — optional Twilio call status webhook
+app.post('/api/twilio/status', (req, res) => {
+  const { CallStatus, To, From } = req.body;
+  io.emit('activity', { type: 'pstn-status', status: CallStatus, to: To, from: From, ts: Date.now() });
+  res.sendStatus(204);
+});
 
 // ── State ────────────────────────────────────────────────────
 // Online users roster: socketId -> { name, status }

@@ -138,12 +138,12 @@
   </div>
 </div>
 
-<!-- ══ Incoming call toast ══ -->
+<!-- ══ Incoming WebRTC call toast ══ -->
 <div class="toast" id="callToast">
   <div class="toast-row">
     <div class="cc-avatar" id="toastAvatar">?</div>
     <div>
-      <div class="toast-title">📞 שיחה נכנסת</div>
+      <div class="toast-title">📞 שיחה פנימית נכנסת</div>
       <div class="toast-name" id="toastName">—</div>
     </div>
   </div>
@@ -152,6 +152,40 @@
     <button class="toast-btn decline" onclick="APP.callDecline()">דחה</button>
   </div>
 </div>
+
+<!-- ══ Incoming PSTN call toast ══ -->
+<div class="toast" id="pstnToast" style="top:144px">
+  <div class="toast-row">
+    <div class="cc-avatar" style="background:linear-gradient(135deg,var(--grn),var(--amb))">📞</div>
+    <div>
+      <div class="toast-title" style="color:var(--grn)">📱 שיחת PSTN נכנסת</div>
+      <div class="toast-name" id="pstnFromNum">—</div>
+    </div>
+  </div>
+  <div class="toast-btns">
+    <button class="toast-btn accept" onclick="APP.pstnAccept()">ענה</button>
+    <button class="toast-btn decline" onclick="APP.pstnDecline()">דחה</button>
+  </div>
+</div>
+
+<!-- ══ Active PSTN call card (injected into sidebar) ══ -->
+<template id="twCallCardTpl">
+  <div class="call-card visible" id="twCallCard" style="border-color:rgba(52,211,153,.35)">
+    <div style="font-size:9.5px;font-weight:700;color:var(--grn);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">📱 PSTN — שיחה פעילה</div>
+    <div class="cc-row">
+      <div class="cc-avatar" style="background:linear-gradient(135deg,var(--grn),var(--amb))">📞</div>
+      <div>
+        <div class="cc-name" id="twCallLabel">—</div>
+        <div class="cc-time" id="twCallTime">00:00</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--t3);margin-bottom:8px" id="twOwnNumber"></div>
+    <div class="cc-btns">
+      <button class="cc-btn" id="twMuteBtn" onclick="APP.pstnMute()">🎙 השתק</button>
+      <button class="cc-btn hang" onclick="APP.pstnHangup()">⏹ נתק</button>
+    </div>
+  </div>
+</template>
 
 <!-- ══ Demo modal ══ -->
 <div class="overlay" id="demoOverlay">
@@ -175,21 +209,47 @@
   </div>
 </div>
 
-<!-- ══ Dialer / SIP modal ══ -->
+<!-- ══ Dialer / PSTN / SIP modal ══ -->
 <div class="overlay" id="dialerOverlay">
   <div class="modal">
     <div class="modal-title">📞 חייגן</div>
-    <div class="modal-sub">חיוג למספר דרך מרכזיה ארגונית (SIP), או שליחת DTMF בשיחה פעילה.</div>
+    <div class="modal-sub">חיוג למספר טלפון אמיתי דרך Twilio, מרכזיה ארגונית (SIP), או שליחת DTMF בשיחה פעילה.</div>
 
     <div class="dial-display" id="dialDisplay">&nbsp;</div>
     <div class="keypad" id="keypad"></div>
     <div class="dial-actions">
       <button class="dial-btn del" onclick="APP.dialDel()">⌫</button>
+      <button class="dial-btn call" style="background:linear-gradient(135deg,var(--grn),#059669)" onclick="APP.dialTwilio()">📱 חייג (Twilio)</button>
       <button class="dial-btn call" onclick="APP.dialCall()">📞 חייג (SIP)</button>
     </div>
 
+    <!-- ── Twilio PSTN ── -->
     <div class="modal-section" style="margin-top:24px">
-      <div class="ms-title">חיבור למרכזיה ארגונית (SIP)</div>
+      <div class="ms-title" style="color:var(--grn)">📱 חיבור Twilio — מספר טלפון אמיתי</div>
+      <div class="sip-status" id="twilioStatus"><span class="dot" style="background:var(--t4);box-shadow:none"></span> לא מחובר</div>
+      <div style="font-size:11.5px;color:var(--t2);line-height:1.7;margin:10px 0 14px;background:var(--s2);border:1px solid var(--line);border-radius:9px;padding:12px">
+        <b style="color:var(--grn)">הגדרה חד-פעמית (5 דקות):</b><br>
+        1. <a href="https://console.twilio.com" target="_blank" style="color:var(--pri)">console.twilio.com</a> → ייצור חשבון ניסיון חינם ($15 קרדיט)<br>
+        2. קבל מספר טלפון: <b>Phone Numbers → Manage → Buy a Number</b><br>
+        3. צור TwiML App: <b>Voice → TwiML Apps</b> — Request URL: <code style="color:var(--amber);font-size:10px">https://YOUR-SERVER/api/twilio/voice</code><br>
+        4. צור API Key: <b>Account → API Keys → Create</b><br>
+        5. הוסף לקובץ <code style="color:var(--amber);font-size:10.5px">.env</code> ולחץ "חבר":
+      </div>
+      <div style="background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;font-family:var(--mono);font-size:11px;color:var(--grn);margin-bottom:14px;line-height:1.9">
+        TWILIO_ACCOUNT_SID=<span style="color:var(--t2)">ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span><br>
+        TWILIO_API_KEY=<span style="color:var(--t2)">SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span><br>
+        TWILIO_API_SECRET=<span style="color:var(--t2)">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span><br>
+        TWILIO_TWIML_APP_SID=<span style="color:var(--t2)">APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span><br>
+        TWILIO_PHONE_NUMBER=<span style="color:var(--t2)">+1XXXXXXXXXX</span>
+      </div>
+      <div class="modal-btns" style="margin-bottom:0">
+        <button class="m-btn go" style="background:linear-gradient(135deg,var(--grn),#059669)" id="twilioConnectBtn" onclick="APP.twilioConnect()">📱 חבר Twilio</button>
+      </div>
+    </div>
+
+    <!-- ── SIP / PBX ── -->
+    <div class="modal-section" style="margin-top:18px">
+      <div class="ms-title">מרכזיה ארגונית (SIP/WebSocket)</div>
       <div class="sip-status" id="sipStatus"><span class="dot" style="background:var(--t4);box-shadow:none"></span> לא מחובר למרכזיה</div>
       <div class="field"><label>SIP WebSocket Server (wss://)</label><input id="sipServer" type="text" placeholder="wss://pbx.example.com:8089/ws" autocomplete="off"/></div>
       <div class="field"><label>SIP URI</label><input id="sipUri" type="text" placeholder="sip:1001@pbx.example.com" autocomplete="off"/></div>

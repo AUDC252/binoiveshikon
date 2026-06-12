@@ -3,6 +3,7 @@
    - WebRTC mesh per channel, per-channel PTT via GainNode
    - Per-channel volume / mute / stereo pan / recording
    - Private 1:1 calls, DTMF dialer, optional SIP trunk (PBX)
+   - Twilio PSTN — real phone number in/out via Twilio Voice SDK
    - VOX (voice-activated transmit), demo simulation
 ════════════════════════════════════════════════════════════ */
 
@@ -441,6 +442,100 @@ class SIPManager {
   }
 }
 
+/* ══════════════ Twilio PSTN Voice ══════════════ */
+class TwilioVoice {
+  constructor(sys){
+    this.sys=sys; this.device=null; this.call=null;
+    this.ready=false; this.phoneNumber=null; this.muted=false;
+  }
+
+  async init(identity){
+    // Lazy-load Twilio Voice SDK from CDN
+    if(!window.Twilio){
+      await loadScript('https://sdk.twilio.com/js/voice/releases/2.11.0/twilio.min.js');
+    }
+    const r=await fetch(`/api/twilio/token?identity=${encodeURIComponent(identity)}`);
+    const data=await r.json();
+    if(data.error) throw new Error(data.error);
+
+    this.phoneNumber=data.phoneNumber;
+    this.device=new Twilio.Device(data.token,{logLevel:'warn',codecPreferences:['opus','pcmu']});
+
+    this.device.on('registered',()=>{
+      this.ready=true;
+      this.sys.ui.feed(`<b>Twilio</b> מחובר — מספר: <span class="fc">${esc(this.phoneNumber||'?')}</span>`);
+      this._updateUI();
+    });
+    this.device.on('unregistered',()=>{ this.ready=false; this._updateUI(); });
+    this.device.on('error',e=>this.sys.ui.feed(`<b>Twilio שגיאה:</b> ${esc(e.message)}`));
+    this.device.on('incoming',call=>this._onIncoming(call));
+
+    await this.device.register();
+  }
+
+  async dial(number){
+    if(!this.device||!this.ready) throw new Error('Twilio לא מחובר — לחץ "חיבור Twilio" קודם');
+    this.call=await this.device.connect({ params:{ To:number } });
+    this._wireCall(this.call, number);
+    return this.call;
+  }
+
+  _onIncoming(call){
+    const from=call.parameters.From||'Unknown';
+    this.sys.ui.showPstnToast(from, call);
+  }
+
+  acceptIncoming(call){
+    call.accept();
+    this.call=call;
+    this._wireCall(call, call.parameters.From);
+    this.sys.ui.feed(`<b>PSTN</b> ענינו לשיחה מ-<span class="fc">${esc(call.parameters.From||'?')}</span>`);
+  }
+
+  rejectIncoming(call){ call.reject(); }
+
+  _wireCall(call, label){
+    const ts=Date.now();
+    this.muted=false;
+    this.sys.ui.showTwilioCard(label, '00:00', this.phoneNumber);
+    const timer=setInterval(()=>{
+      const el=$('twCallTime'); if(el) el.textContent=fmtDur(Math.floor((Date.now()-ts)/1000));
+    },1000);
+    call.on('accept',()=>this.sys.ui.feed(`<b>PSTN</b> שיחה עם <span class="fc">${esc(label)}</span> חיה`));
+    call.on('disconnect',()=>{
+      clearInterval(timer); this.call=null;
+      this.sys.ui.hideTwilioCard();
+      this.sys.ui.feed(`<b>PSTN</b> שיחה עם <span class="fc">${esc(label)}</span> הסתיימה`);
+    });
+    call.on('error',e=>this.sys.ui.feed(`<b>PSTN שגיאה:</b> ${esc(e.message)}`));
+  }
+
+  hangup(){ if(this.call){ this.call.disconnect(); this.call=null; } }
+
+  toggleMute(){
+    if(!this.call) return;
+    this.muted=!this.muted;
+    this.call.mute(this.muted);
+    const b=$('twMuteBtn');
+    if(b){ b.textContent=this.muted?'🎙 מושתק':'🎙 השתק'; b.classList.toggle('muted',this.muted); }
+    return this.muted;
+  }
+
+  sendDTMF(d){ if(this.call) this.call.sendDigits(d); }
+
+  _updateUI(){
+    const s=$('twilioStatus');
+    if(!s) return;
+    if(this.ready){
+      s.className='sip-status ok';
+      s.innerHTML=`<span class="dot"></span> מחובר — ${esc(this.phoneNumber||'ללא מספר')}`;
+    }else{
+      s.className='sip-status';
+      s.innerHTML=`<span class="dot" style="background:var(--t4);box-shadow:none"></span> לא מחובר`;
+    }
+  }
+}
+
 /* ══════════════ Demo Simulation ══════════════ */
 class Demo {
   constructor(sys){
@@ -564,6 +659,7 @@ class System {
     this.calls=new CallManager(this);
     this.sip=new SIPManager(this);
     this.demo=new Demo(this);
+    this.twilio=new TwilioVoice(this);
   }
 
   async connect(name,serverUrl){
@@ -932,6 +1028,39 @@ class UI {
   }
   hideCallCard(){ $('callCard').classList.remove('visible'); }
 
+  /* ── PSTN / Twilio UI ── */
+  showPstnToast(from, call){
+    APP._pendingPstn=call;
+    $('pstnFromNum').textContent=from;
+    $('pstnToast').classList.add('visible');
+    // auto-dismiss after 30 s
+    setTimeout(()=>{
+      if($('pstnToast').classList.contains('visible')){
+        $('pstnToast').classList.remove('visible');
+        APP.pstnDecline();
+      }
+    },30000);
+  }
+
+  showTwilioCard(label, time, ownNumber){
+    const sidebar=document.querySelector('.sidebar');
+    if(!sidebar) return;
+    let card=$('twCallCard');
+    if(!card){
+      const tpl=$('twCallCardTpl');
+      if(tpl){ const clone=tpl.content.cloneNode(true); sidebar.insertBefore(clone,sidebar.firstChild); }
+      card=$('twCallCard');
+    }
+    if(card){ card.style.display=''; }
+    const lbl=$('twCallLabel'); if(lbl) lbl.textContent=label;
+    const own=$('twOwnNumber'); if(own&&ownNumber) own.textContent=`מקבל/שולח: ${ownNumber}`;
+    const t=$('twCallTime'); if(t) t.textContent=time;
+  }
+
+  hideTwilioCard(){
+    const c=$('twCallCard'); if(c) c.style.display='none';
+  }
+
   stats(){
     const sys=this.sys;
     const joined=Object.values(sys.channels).filter(c=>c.joined).length;
@@ -985,6 +1114,12 @@ const APP={
     const e=await this.sys.connect(name,server);
     if(e){ err.textContent=e; btn.disabled=false; btn.textContent='התחבר למערכת'; return; }
     this.sys.ui.showApp();
+    // Check if Twilio is configured server-side and auto-connect
+    fetch('/api/twilio/status').then(r=>r.json()).then(d=>{
+      if(d.enabled){
+        this.sys.ui.feed(`<b>Twilio</b> מוגדר בשרת — לחץ "חייגן" → "חבר Twilio" לאפשר שיחות PSTN`);
+      }
+    }).catch(()=>{});
   },
 
   join(id){ this.sys.joinChannel(id); },
@@ -1056,6 +1191,38 @@ const APP={
     try{ this.sys.sip.dial(this._dialNum); }
     catch(e){ alert(e.message+'\nהתחבר קודם למרכזיה (SIP) בחלק התחתון של החייגן.'); }
   },
+  async dialTwilio(){
+    if(!this._dialNum){ alert('הזן מספר טלפון — לדוגמה +972501234567'); return; }
+    if(!this.sys.twilio.ready){ alert('חבר Twilio קודם — לחץ "חבר Twilio" בחלק Twilio של החייגן.'); return; }
+    try{
+      await this.sys.twilio.dial(this._dialNum);
+    }catch(e){ alert(e.message); }
+  },
+
+  async twilioConnect(){
+    const btn=$('twilioConnectBtn'); btn.disabled=true;
+    btn.textContent='מתחבר...';
+    try{
+      await this.sys.twilio.init(this.sys.displayName);
+    }catch(e){
+      const el=$('twilioStatus');
+      if(el){ el.className='sip-status err'; el.innerHTML=`<span class="dot" style="background:var(--red)"></span> ${esc(e.message)}`; }
+    }
+    btn.disabled=false; btn.textContent='📱 חבר Twilio';
+  },
+
+  // PSTN incoming
+  pstnAccept(){
+    $('pstnToast').classList.remove('visible');
+    if(this._pendingPstn){ this.sys.twilio.acceptIncoming(this._pendingPstn); this._pendingPstn=null; }
+  },
+  pstnDecline(){
+    $('pstnToast').classList.remove('visible');
+    if(this._pendingPstn){ this.sys.twilio.rejectIncoming(this._pendingPstn); this._pendingPstn=null; }
+  },
+  pstnMute(){ this.sys.twilio.toggleMute(); },
+  pstnHangup(){ this.sys.twilio.hangup(); },
+
   async sipConnect(){
     const server=$('sipServer').value.trim();
     const uri=$('sipUri').value.trim();
